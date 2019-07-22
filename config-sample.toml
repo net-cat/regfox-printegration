@@ -1,0 +1,12 @@
+# RegFox API key. Get it from Extras->Integrations
+# Don't check it into the repo.
+api_key = '00000000000000000000000000000000'
+
+# RegFox form number. Get it from the URL.
+# https://manage.webconnex.com/a/<some number>/pages/<form id>
+form_id = 1
+
+# SQLite database that will be used to store the cache.
+# (:memory: is acceptable, will just use more API calls if you restart the server.)
+database_file = ":memory:"
+
