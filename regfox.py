@@ -91,30 +91,32 @@ class RegFoxCache:
         self._db_file = database
         self._db = None
         self._form_id = str(form_id)
+        self._db_lock = asyncio.Lock()
 
     async def _startup(self):
         first_sync = self._db_file == ':memory' or not os.path.exists(self._db_file)
 
-        self._db = await aiosqlite.connect(self._db_file)
-        await self._db.execute('''
-        create table if not exists badges (
-            registrantId INT,
-            orderId INT,
-            badgeLevel TEXT,
-            orderStatus TEXT,
-            firstName TEXT,
-            lastName TEXT,
-            email TEXT,
-            attendeeBadgeName TEXT,
-            dateOfBirth INT,
-            phone TEXT,
-            checkedIn INT
-        )
-        ''')
-        await self._db.commit()
+        async with self._db_lock:
+            self._db = await aiosqlite.connect(self._db_file)
+            await self._db.execute('''
+            create table if not exists badges (
+                registrantId INT,
+                orderId INT,
+                badgeLevel TEXT,
+                orderStatus TEXT,
+                firstName TEXT,
+                lastName TEXT,
+                email TEXT,
+                attendeeBadgeName TEXT,
+                dateOfBirth INT,
+                phone TEXT,
+                checkedIn INT
+            )
+            ''')
+            await self._db.commit()
 
         if first_sync:
-            await self.sync(rebuld=True)
+            await self.sync(rebuild=True)
 
     @classmethod
     async def construct(cls, *args, **kwargs):
@@ -123,7 +125,8 @@ class RegFoxCache:
         return self
 
     async def close(self):
-        await self._db.close()
+        async with self._db_lock:
+            await self._db.close()
 
     async def __aenter__(self):
         await self._startup()
@@ -158,71 +161,76 @@ class RegFoxCache:
         return datetime.date.fromordinal(database_date)
 
     async def sync(self, *, rebuild=False):
-        registrant_params = {}
-        order_params = {}
-        if not rebuild:
-            async with self._db.execute('select max(registrantId), max(orderId) from badges') as cursor:
-                registrant_params['startingAfter'], order_params['startingAfter'] = await cursor.fetchone()
-        print("REBUILD:", rebuild, registrant_params, order_params)
-
-        registrants, orders = await asyncio.gather(
-            self._client_session.search_registrants(formId=self._form_id, **registrant_params),
-            self._client_session.search_orders(formId=self._form_id, **order_params),
-        )
-
-        #registrant_dict = self.list_to_dict(registrants)
-        order_dict = self.list_to_dict(orders)
-
-        inserts = []
-        for registrant in registrants:
-            REG_OPTION_PATH = 'registrationOptions'
-
-            options = {}
-            selected_option = None
-            fields = {}
-            for datum in registrant['fieldData']:
-                if datum['path'] == REG_OPTION_PATH:
-                    selected_option = datum['value']
-                elif datum['path'].startswith(REG_OPTION_PATH):
-                    options[datum['path'][len(REG_OPTION_PATH)+1:]] = datum['label']
-                else:
-                    fields[datum['path']] = datum['value']
-
-            inserts.append([
-                registrant['id'], # registrantId
-                registrant['orderId'], # orderId
-                options[selected_option], # badgeLevel
-                order_dict[registrant['orderId']]['status'], # orderStatus
-                fields.get('name.first', None), #registrant['firstName'], # firstName
-                fields.get('name.last', None), #registrant['lastName'], # lastName
-                fields.get('email', None), # email
-                fields.get('attendeeBadgeName', None), # attendeeBadgeName
-                self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None))), # dateOfBirth
-                fields.get('phone', None), # phone
-                registrant['checkedIn'] # checkedIn
-            ])
-
-        print("ADDED:", len(inserts))
-
-        if rebuild:
-            await self._db.execute('delete from badges')
-
-        await self._db.executemany('''
-            insert into badges (
-                registrantId,
-                orderId,
-                badgeLevel,
-                orderStatus,
-                firstName,
-                lastName,
-                email,
-                attendeeBadgeName,
-                dateOfBirth,
-                phone,
-                checkedIn
-            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', inserts)
-        await self._db.commit()
+        async with self._db_lock:
+            registrant_params = {}
+            order_params = {}
+            if not rebuild:
+                async with self._db.execute('select max(registrantId), max(orderId) from badges') as cursor:
+                    max_registrant_id, max_order_id = await cursor.fetchone()
+                    if max_registrant_id is not None:
+                        registrant_params['startingAfter'] = max_registrant_id
+                    if max_order_id is not None:
+                        order_params['startingAfter'] = max_order_id 
+            print("REBUILD:", rebuild, registrant_params, order_params)
+    
+            registrants, orders = await asyncio.gather(
+                self._client_session.search_registrants(formId=self._form_id, **registrant_params),
+                self._client_session.search_orders(formId=self._form_id, **order_params),
+            )
+    
+            #registrant_dict = self.list_to_dict(registrants)
+            order_dict = self.list_to_dict(orders)
+    
+            inserts = []
+            for registrant in registrants:
+                REG_OPTION_PATH = 'registrationOptions'
+    
+                options = {}
+                selected_option = None
+                fields = {}
+                for datum in registrant['fieldData']:
+                    if datum['path'] == REG_OPTION_PATH:
+                        selected_option = datum['value']
+                    elif datum['path'].startswith(REG_OPTION_PATH):
+                        options[datum['path'][len(REG_OPTION_PATH)+1:]] = datum['label']
+                    else:
+                        fields[datum['path']] = datum['value']
+    
+                inserts.append([
+                    registrant['id'], # registrantId
+                    registrant['orderId'], # orderId
+                    options[selected_option], # badgeLevel
+                    order_dict[registrant['orderId']]['status'], # orderStatus
+                    fields.get('name.first', None), #registrant['firstName'], # firstName
+                    fields.get('name.last', None), #registrant['lastName'], # lastName
+                    fields.get('email', None), # email
+                    fields.get('attendeeBadgeName', None), # attendeeBadgeName
+                    self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None))), # dateOfBirth
+                    fields.get('phone', None), # phone
+                    registrant['checkedIn'] # checkedIn
+                ])
+    
+            print("ADDED:", len(inserts))
+    
+            if rebuild:
+                await self._db.execute('delete from badges')
+    
+            await self._db.executemany('''
+                insert into badges (
+                    registrantId,
+                    orderId,
+                    badgeLevel,
+                    orderStatus,
+                    firstName,
+                    lastName,
+                    email,
+                    attendeeBadgeName,
+                    dateOfBirth,
+                    phone,
+                    checkedIn
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', inserts)
+            await self._db.commit()
 
 async def main(config_file):
     args = toml.load(config_file)

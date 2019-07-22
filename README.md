@@ -37,7 +37,7 @@ This script is for a specific event. I'm happy to take PR's that help make it mo
 NOTE: These instructions assume you have some degree of computer knowledge. I will write better ones when the system is closer to completion.
 
 1. Check out the repo and `cd` into it.
-2. Create your virtual environment: `python -m venv print-env`
+2. Create your virtual environment: `python3 -m venv print-env`
 3. Activate it: `source print-env/bin/activate`
 4. Update basic python packages: `python -m pip -U pip setuptools wheel`
 5. Install the requirements: `python -m pip -r requirements.txt`
