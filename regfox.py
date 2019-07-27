@@ -86,37 +86,35 @@ class RegFoxClientSession(aiohttp.ClientSession):
         return await self.api_get(uri, **params)
 
 class RegFoxCache:
-    def __init__(self, client_session, form_id, database=':memory:'):
+    def __init__(self, client_session, config):
         self._client_session = client_session
-        self._db_file = database
+        self._db_file = config['database_file']
         self._db = None
-        self._form_id = str(form_id)
+        self._form_id = str(config['form_id'])
         self._db_lock = asyncio.Lock()
+        self._start_date = self.date_from_regfox(config['start_date'])
 
     async def _startup(self):
-        first_sync = self._db_file == ':memory' or not os.path.exists(self._db_file)
+        self._first_sync = self._db_file == ':memory:' or not os.path.exists(self._db_file)
 
         async with self._db_lock:
             self._db = await aiosqlite.connect(self._db_file)
+            self._db.row_factory = aiosqlite.Row
             await self._db.execute('''
-            create table if not exists badges (
-                registrantId INT,
-                orderId INT,
-                badgeLevel TEXT,
-                orderStatus TEXT,
-                firstName TEXT,
-                lastName TEXT,
-                email TEXT,
-                attendeeBadgeName TEXT,
-                dateOfBirth INT,
-                phone TEXT,
-                checkedIn INT
-            )
+                create table if not exists badges (
+                    registrantId INT PRIMARY KEY,
+                    badgeLevel TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    firstName TEXT NOT NULL,
+                    lastName TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    attendeeBadgeName TEXT NOT NULL,
+                    dateOfBirth INT NOT NULL,
+                    phone TEXT NOT NULL,
+                    checkedIn INT NOT NULL
+                )
             ''')
             await self._db.commit()
-
-        if first_sync:
-            await self.sync(rebuild=True)
 
     @classmethod
     async def construct(cls, *args, **kwargs):
@@ -160,31 +158,43 @@ class RegFoxCache:
             return None
         return datetime.date.fromordinal(database_date)
 
+    @staticmethod
+    def calculate_age(dob, now=datetime.date.today()):
+        if not dob or now < dob:
+            return 0
+        age = now.year - dob.year
+        if now.month < dob.month or (now.month == dob.month and now.day < dob.day):
+            age -= 1
+        return age
+
+    def process_age(self, registrant_dict):
+        registrant_dict['dateOfBirth'] = self.date_from_database(registrant_dict['dateOfBirth'])
+        registrant_dict['ageAtCon'] = self.calculate_age(registrant_dict['dateOfBirth'], self._start_date)
+        registrant_dict['ageNow'] = self.calculate_age(registrant_dict['dateOfBirth'])
+
+    def unprocess_age(self, registrant_dict):
+        registrant_dict['dateOfBirth'] = self.date_to_database(registrant_dict['dateOfBirth'])
+        del registrant_dict['ageAtCon']
+        del registrant_dict['ageNow']
+
     async def sync(self, *, rebuild=False):
         async with self._db_lock:
             registrant_params = {}
-            order_params = {}
-            if not rebuild:
-                async with self._db.execute('select max(registrantId), max(orderId) from badges') as cursor:
-                    max_registrant_id, max_order_id = await cursor.fetchone()
+            if rebuild or self._first_sync:
+                self._first_sync = False
+                print("REBUILD:", registrant_params)
+            else:
+                async with self._db.execute('select max(registrantId) from badges') as cursor:
+                    (max_registrant_id,) = await cursor.fetchone()
                     if max_registrant_id is not None:
                         registrant_params['startingAfter'] = max_registrant_id
-                    if max_order_id is not None:
-                        order_params['startingAfter'] = max_order_id 
-            print("REBUILD:", rebuild, registrant_params, order_params)
-    
-            registrants, orders = await asyncio.gather(
-                self._client_session.search_registrants(formId=self._form_id, **registrant_params),
-                self._client_session.search_orders(formId=self._form_id, **order_params),
-            )
-    
-            #registrant_dict = self.list_to_dict(registrants)
-            order_dict = self.list_to_dict(orders)
-    
+
+            registrants = await self._client_session.search_registrants(formId=self._form_id, **registrant_params)
             inserts = []
+
             for registrant in registrants:
                 REG_OPTION_PATH = 'registrationOptions'
-    
+
                 options = {}
                 selected_option = None
                 fields = {}
@@ -195,12 +205,11 @@ class RegFoxCache:
                         options[datum['path'][len(REG_OPTION_PATH)+1:]] = datum['label']
                     else:
                         fields[datum['path']] = datum['value']
-    
+
                 inserts.append([
                     registrant['id'], # registrantId
-                    registrant['orderId'], # orderId
                     options[selected_option], # badgeLevel
-                    order_dict[registrant['orderId']]['status'], # orderStatus
+                    registrant['status'],
                     fields.get('name.first', None), #registrant['firstName'], # firstName
                     fields.get('name.last', None), #registrant['lastName'], # lastName
                     fields.get('email', None), # email
@@ -209,18 +218,17 @@ class RegFoxCache:
                     fields.get('phone', None), # phone
                     registrant['checkedIn'] # checkedIn
                 ])
-    
+
             print("ADDED:", len(inserts))
-    
+
             if rebuild:
                 await self._db.execute('delete from badges')
-    
+
             await self._db.executemany('''
                 insert into badges (
                     registrantId,
-                    orderId,
                     badgeLevel,
-                    orderStatus,
+                    status,
                     firstName,
                     lastName,
                     email,
@@ -228,14 +236,63 @@ class RegFoxCache:
                     dateOfBirth,
                     phone,
                     checkedIn
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', inserts)
             await self._db.commit()
 
+    def registrant_row_to_dict(self, reg):
+        reg_dict = dict(reg)
+        self.process_age(reg_dict)
+        return reg_dict
+
+    async def search_registrants(self, criteria):
+        search_columns = ('firstName', 'lastName', 'email', 'attendeeBadgeName', 'phone')
+        sql = 'select * from badges where '
+        sql += ' or '.join(['{} like ?'.format(column) for column in search_columns])
+        async with self._db.execute(sql, ["%{}%".format(criteria)] * len(search_columns)) as cursor:
+            registrants = await cursor.fetchall()
+            if not registrants:
+                return []
+            returning = []
+            for reg in registrants:
+                returning.append(self.registrant_row_to_dict(reg))
+            return returning
+
+    async def get_registrant(self, id_):
+        async with self._db.execute('select * from badges where registrantId = ?', [id_]) as cursor:
+            if cursor.rowcount == 0:
+                raise RuntimeError('Registrant {} not found.'.format(id_))
+            if cursor.rowcount > 1:
+                raise RuntimeError('Registrant {} found multiple times. (This should be impossible since that column is the primary key.)'.format(id_))
+            return self.registrant_row_to_dict(await cursor.fetchone())
+
+async def display_form_ids(config_file):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['api_key']) as api:
+        form_data = [{'id': 'Form ID', 'name': 'Form Name'}] + await api.forms()
+        for datum in form_data:
+            print('{id:7}   {name}'.format(**datum))
+
+async def search_registrants(config_file, criteria):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['api_key']) as api:
+        async with RegFoxCache(api, config) as cache:
+            await cache.sync()
+            registrants = await cache.search_registrants(criteria)
+            for reg in registrants:
+                pprint.pprint(reg)
+
+async def get_registrant(config_file, id_):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['api_key']) as api:
+        async with RegFoxCache(api, config) as cache:
+            await cache.sync()
+            pprint.pprint(await cache.get_registrant(id_))
+
 async def main(config_file):
-    args = toml.load(config_file)
-    async with RegFoxClientSession(api_key=args['api_key']) as api:
-        async with RegFoxCache(api, args['form_id'], args['database_file']) as cache:
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['api_key']) as api:
+        async with RegFoxCache(api, config) as cache:
             await cache.sync(rebuild=False)
 
 if __name__ == '__main__':
@@ -243,9 +300,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--configuration', '-c', type=os.path.realpath, required=True, help='Configuration File')
+    parser.add_argument('--show-forms', action='store_true', help='Show all forms (events) that are accessible with the provided configuration.')
+    parser.add_argument('--search-registrants', dest='search_criteria', default=None, required=False, help='Search for registrants with the given criteria.')
+    parser.add_argument('--get-registrant', dest='registrant_id', default=None, required=False, type=int, help='Get registrant by registrantId.')
     args = parser.parse_args()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(args.configuration))
+    if args.show_forms:
+        loop.run_until_complete(display_form_ids(args.configuration))
+    elif args.search_criteria is not None:
+        loop.run_until_complete(search_registrants(args.configuration, args.search_criteria))
+    elif args.registrant_id is not None:
+        loop.run_until_complete(get_registrant(args.configuration, args.registrant_id))
+    else:
+        loop.run_until_complete(main(args.configuration))
     loop.close()
 

@@ -4,9 +4,19 @@ api_key = '00000000000000000000000000000000'
 
 # RegFox form number. Get it from the URL.
 # https://manage.webconnex.com/a/<some number>/pages/<form id>
+# You can also use this script to query available forms: regfox.py -c config.toml --show-forms
 form_id = 1
 
+# Number of seconds between updates from RegFox.
+# Each update will use one API requests per 50 new registrants. (Minimum of one.)
+update_period = 60
+
+# Date the event starts. (This date will be used to calculate attendee ages.)
+start_date = "1955-09-12"
+
 # SQLite database that will be used to store the cache.
-# (:memory: is acceptable, will just use more API calls if you restart the server.)
+# Using :memory: is acceptable with the following caveats:
+#  * It will use more API calls if you restart the server.
+#  * The --search-registrants and --get-registrants will use one API call per 50 registrants.
 database_file = ":memory:"
 
