@@ -6,6 +6,7 @@ import datetime
 import os
 import sys
 import toml
+import json
 
 class RegFoxClientSession(aiohttp.ClientSession):
     def __init__(self, *, api_key=None, service_prefix='https://api.webconnex.com/v2/public', **kw):
@@ -103,6 +104,8 @@ class RegFoxCache:
             await self._db.execute('''
                 create table if not exists badges (
                     registrantId INT PRIMARY KEY,
+                    displayId TEXT NOT NULL UNIQUE,
+                    orderId INT NOT NULL,
                     badgeLevel TEXT NOT NULL,
                     status TEXT NOT NULL,
                     firstName TEXT NOT NULL,
@@ -111,6 +114,7 @@ class RegFoxCache:
                     attendeeBadgeName TEXT NOT NULL,
                     dateOfBirth INT NOT NULL,
                     phone TEXT NOT NULL,
+                    billingData TEXT NOT NULL,
                     checkedIn INT NOT NULL
                 )
             ''')
@@ -180,17 +184,25 @@ class RegFoxCache:
     async def sync(self, *, rebuild=False):
         async with self._db_lock:
             registrant_params = {}
+            order_params = {}
             if rebuild or self._first_sync:
                 self._first_sync = False
                 print("REBUILD:", registrant_params)
             else:
-                async with self._db.execute('select max(registrantId) from badges') as cursor:
-                    (max_registrant_id,) = await cursor.fetchone()
+                async with self._db.execute('select max(registrantId), max(orderId) from badges') as cursor:
+                    (max_registrant_id, max_order_id) = await cursor.fetchone()
                     if max_registrant_id is not None:
                         registrant_params['startingAfter'] = max_registrant_id
+                    if max_order_id is not None:
+                        order_params['startingAfter'] = max_order_id
 
-            registrants = await self._client_session.search_registrants(formId=self._form_id, **registrant_params)
+            registrants, orders = await asyncio.gather(
+                self._client_session.search_registrants(formId=self._form_id, **registrant_params),
+                self._client_session.search_orders(formId=self._form_id, **order_params),
+            )
             inserts = []
+
+            order_dict = self.list_to_dict(orders)
 
             for registrant in registrants:
                 REG_OPTION_PATH = 'registrationOptions'
@@ -208,6 +220,8 @@ class RegFoxCache:
 
                 inserts.append([
                     registrant['id'], # registrantId
+                    registrant['displayId'], # displayId
+                    registrant['orderId'], # orderId
                     options[selected_option], # badgeLevel
                     registrant['status'],
                     fields.get('name.first', None), #registrant['firstName'], # firstName
@@ -216,6 +230,7 @@ class RegFoxCache:
                     fields.get('attendeeBadgeName', None), # attendeeBadgeName
                     self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None))), # dateOfBirth
                     fields.get('phone', None), # phone
+                    json.dumps(order_dict[registrant['orderId']]['billing']), # billingData
                     registrant['checkedIn'] # checkedIn
                 ])
 
@@ -227,6 +242,8 @@ class RegFoxCache:
             await self._db.executemany('''
                 insert into badges (
                     registrantId,
+                    displayId,
+                    orderId,
                     badgeLevel,
                     status,
                     firstName,
@@ -235,8 +252,9 @@ class RegFoxCache:
                     attendeeBadgeName,
                     dateOfBirth,
                     phone,
+                    billingData,
                     checkedIn
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', inserts)
             await self._db.commit()
 
@@ -246,7 +264,7 @@ class RegFoxCache:
         return reg_dict
 
     async def search_registrants(self, criteria):
-        search_columns = ('firstName', 'lastName', 'email', 'attendeeBadgeName', 'phone')
+        search_columns = ('firstName', 'lastName', 'email', 'attendeeBadgeName', 'phone', 'displayId')
         sql = 'select * from badges where '
         sql += ' or '.join(['{} like ?'.format(column) for column in search_columns])
         async with self._db.execute(sql, ["%{}%".format(criteria)] * len(search_columns)) as cursor:
