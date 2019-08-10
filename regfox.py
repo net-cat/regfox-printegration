@@ -114,7 +114,8 @@ class RegFoxCache:
                     attendeeBadgeName TEXT NOT NULL,
                     dateOfBirth INT NOT NULL,
                     phone TEXT NOT NULL,
-                    billingData TEXT NOT NULL,
+                    billingCountry TEXT,
+                    billingZip TEXT,
                     checkedIn INT NOT NULL
                 )
             ''')
@@ -230,7 +231,8 @@ class RegFoxCache:
                     fields.get('attendeeBadgeName', None), # attendeeBadgeName
                     self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None))), # dateOfBirth
                     fields.get('phone', None), # phone
-                    json.dumps(order_dict[registrant['orderId']]['billing']), # billingData
+                    order_dict[registrant['orderId']]['billing']['address'].get('country', None), # billingCountry
+                    order_dict[registrant['orderId']]['billing']['address'].get('postalCode', None), # billingZip
                     registrant['checkedIn'] # checkedIn
                 ])
 
@@ -252,9 +254,10 @@ class RegFoxCache:
                     attendeeBadgeName,
                     dateOfBirth,
                     phone,
-                    billingData,
+                    billingCountry,
+                    billingZip,
                     checkedIn
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', inserts)
             await self._db.commit()
 
