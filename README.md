@@ -34,14 +34,21 @@ This script is for a specific event. I'm happy to take PR's that help make it mo
 
 ## Setup
 
-NOTE: These instructions assume you have some degree of computer knowledge. I will write better ones when the system is closer to completion.
-
 1. Check out the repo and `cd` into it.
 2. Create your virtual environment: `python3 -m venv print-env`
 3. Activate it: `source print-env/bin/activate`
-4. Update basic python packages: `python -m pip -U pip setuptools wheel`
-5. Install the requirements: `python -m pip -r requirements.txt`
-6. Copy and edit your config file. (Please don't check your API key into the repo.)
-7. Run the script: `python regfox.py -c your_config_file.toml`
+4. Update basic python packages: `python -m pip install -U pip setuptools wheel` (Also overwrite Ubuntu's stupid modifications to pip that break things in venvs.)
+5. Install the requirements: `python -m pip install -r requirements.txt`
+6. Copy and edit your config file. (Please don't check your API key into the repo. For now, don't use `:memory:` databases.)
+7. Pull jQuery into the static folder: `wget https://code.jquery.com/jquery-3.4.1.min.js -Ostatic/jquery.min.js` (3.4.1 is the latest version at the time of this writing.)
+8. Run the script to sync the cache: `python regfox.py -c your_config_file.toml`
+9. Run the frontend: `python frontend.py -c your_config_file.toml`
+10. Browse to http://127.0.0.1:8080/static/index.html
 
-The script will do what it does. (At the time of this writing, it fetches all your attendees and puts them in a SQLite database.)
+### Notes:
+
+* These instructions assume you have some degree of computer knowledge. I will write better ones when the system is closer to completion.
+* Running `regfox.py` will populate your cache.
+* Running `frontend.py` will make no attempt to populate your cache.
+* Running with a `:memory:` database will probably not work very well. (This is TODO, like a lot of other things.)
+

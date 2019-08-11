@@ -8,6 +8,18 @@ import sys
 import toml
 import json
 
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime.date):
+            return o.isoformat()
+        return super().default(o)
+
+    @classmethod
+    def dumps(cls, obj, **kw):
+        if 'cls' not in kw:
+            kw['cls'] = cls
+        return json.dumps(obj, **kw)
+
 class RegFoxClientSession(aiohttp.ClientSession):
     def __init__(self, *, api_key=None, service_prefix='https://api.webconnex.com/v2/public', **kw):
         self._service_prefix = service_prefix
@@ -266,10 +278,16 @@ class RegFoxCache:
         self.process_age(reg_dict)
         return reg_dict
 
-    async def search_registrants(self, criteria):
+    async def search_registrants(self, criteria='', limit=0, offset=0):
         search_columns = ('firstName', 'lastName', 'email', 'attendeeBadgeName', 'phone', 'displayId')
+
         sql = 'select * from badges where '
         sql += ' or '.join(['{} like ?'.format(column) for column in search_columns])
+        if limit:
+            sql += ' limit {:d}'.format(limit)
+            if offset:
+                sql += ' offset {:d}'.format(offset)
+
         async with self._db.execute(sql, ["%{}%".format(criteria)] * len(search_columns)) as cursor:
             registrants = await cursor.fetchall()
             if not registrants:
@@ -289,15 +307,15 @@ class RegFoxCache:
 
 async def display_form_ids(config_file):
     config = toml.load(config_file)
-    async with RegFoxClientSession(api_key=config['api_key']) as api:
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
         form_data = [{'id': 'Form ID', 'name': 'Form Name'}] + await api.forms()
         for datum in form_data:
             print('{id:7}   {name}'.format(**datum))
 
 async def search_registrants(config_file, criteria):
     config = toml.load(config_file)
-    async with RegFoxClientSession(api_key=config['api_key']) as api:
-        async with RegFoxCache(api, config) as cache:
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
             await cache.sync()
             registrants = await cache.search_registrants(criteria)
             for reg in registrants:
@@ -305,15 +323,15 @@ async def search_registrants(config_file, criteria):
 
 async def get_registrant(config_file, id_):
     config = toml.load(config_file)
-    async with RegFoxClientSession(api_key=config['api_key']) as api:
-        async with RegFoxCache(api, config) as cache:
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
             await cache.sync()
             pprint.pprint(await cache.get_registrant(id_))
 
 async def main(config_file):
     config = toml.load(config_file)
-    async with RegFoxClientSession(api_key=config['api_key']) as api:
-        async with RegFoxCache(api, config) as cache:
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
             await cache.sync(rebuild=False)
 
 if __name__ == '__main__':
