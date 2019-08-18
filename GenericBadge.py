@@ -1,6 +1,6 @@
-from badges import make_template
+from badges import make_template, MODE_GRAYSCALE
 
-@make_template(3.5, 1.125)
+@make_template(3.5, 1.125, image_mode=MODE_GRAYSCALE)
 def GenericBadgeTemplate(badge, data):
     badge.register_font('name', 0.375)
     badge.register_font('event', 0.25)
