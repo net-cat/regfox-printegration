@@ -2,7 +2,7 @@
 
 # RegFox API key. Get it from Extras->Integrations
 # Don't check it into the repo.
-api_key = '00000000000000000000000000000000'
+api_key = "00000000000000000000000000000000"
 
 # RegFox form number. Get it from the URL.
 # https://manage.webconnex.com/a/<some number>/pages/<form id>
@@ -10,7 +10,7 @@ api_key = '00000000000000000000000000000000'
 form_id = 1
 
 # Number of seconds between updates from RegFox.
-# Each update will use one API requests per 50 new registrants. (Minimum of one.)
+# Each update will use two API requests per 50 new registrants. (Minimum of two.)
 update_period = 60
 
 # Date the event starts. (This date will be used to calculate attendee ages.)
@@ -19,7 +19,7 @@ start_date = "1955-09-12"
 # SQLite database that will be used to store the cache.
 # Using :memory: is acceptable with the following caveats:
 #  * It will use more API calls if you restart the server.
-#  * The --search-registrants and --get-registrants will use one API call per 50 registrants.
+#  * The --search-registrants and --get-registrants will use two API calls per 50 registrants.
 database_file = ":memory:"
 
 [printer]
