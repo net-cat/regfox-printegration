@@ -13,11 +13,6 @@ def _inch_wrapper(func):
         return func(self, self.in_to_px(*xy), *args, **kwargs)
     return inch_wrapped
 
-def _pixel_wrapper(func):
-    def pixel_wrapped(self, *args, **kwargs):
-        return self.px_to_in(*func(*args, **kwargs))
-    return pixel_wrapped
-
 def in_to_px(x, y=None, *, dpi=DEFAULT_DPI):
     if y is None:
         return int(x * dpi)
@@ -48,9 +43,6 @@ class ImageDrawInches(ImageDraw.ImageDraw):
     point = _inch_wrapper(ImageDraw.ImageDraw.point)
     polygon = _inch_wrapper(ImageDraw.ImageDraw.polygon)
     rectangle = _inch_wrapper(ImageDraw.ImageDraw.rectangle)
-    multiline_text = _inch_wrapper(ImageDraw.ImageDraw.multiline_text)
-
-    multiline_textsize = _pixel_wrapper(ImageDraw.ImageDraw.multiline_textsize)
 
     @staticmethod
     def _basic_to_str(text):
