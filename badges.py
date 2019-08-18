@@ -25,25 +25,33 @@ def _inch_wrapper(func):
         if 'width' in kwargs:
             kwargs['width'] = self.in_to_px(kwargs['width'])
         self._update_fill(kwargs)
-        return func(self, self.in_to_px(*xy), *args, **kwargs)
+        return func(self, self.in_to_px(xy), *args, **kwargs)
     return inch_wrapped
 
-def in_to_px(x, y=None, *, dpi=DEFAULT_DPI):
-    if y is None:
-        return int(x * dpi)
-    return (int(x * dpi), int(y * dpi))
+def _descend_into_madness(func, func_name):
+    def descent(*values, dpi=DEFAULT_DPI):
+        if len(values) == 0:
+            return tuple()
+        if len(values) == 1:
+            if isinstance(values[0], (int, float)):
+                return func(values[0], dpi)
+            if isinstance(values[0], tuple):
+                return descent(*values[0], dpi=dpi)
+            if isinstance(values[0], list):
+                return [descent(val, dpi=dpi) for val in values[0]]
+            raise TypeError('{} must be int, float, list or tuple and not {}.'.format(func_name, type(values[0]).__name__))
+        return tuple(descent(val, dpi=dpi) for val in values)
+    return descent
 
-def px_to_in(x, y=None, *, dpi=DEFAULT_DPI):
-    if y is None:
-        return x / dpi
-    return (x / dpi, y / dpi)
+in_to_px = _descend_into_madness(lambda n, dpi: int(n * dpi), 'in_to_px')
+px_to_in = _descend_into_madness(lambda n, dpi: n / dpi, 'px_to_in')
 
 class ImageDrawInches(ImageDraw.ImageDraw):
-    def in_to_px(self, x, y=None):
-        return in_to_px(x, y, dpi=self._dpi)
+    def in_to_px(self, *values):
+        return in_to_px(*values, dpi=self._dpi)
 
-    def px_to_in(self, x, y=None):
-        return px_to_in(x, y, dpi=self._dpi)
+    def px_to_in(self, *values):
+        return px_to_in(*values, dpi=self._dpi)
 
     def __init__(self, im, mode=None, *, dpi=DEFAULT_DPI, fill_color=None):
         super().__init__(im, mode)
@@ -74,11 +82,11 @@ class ImageDrawInches(ImageDraw.ImageDraw):
 
     def text(self, xy, text, **kwargs):
         self._update_fill(kwargs)
-        return super().text(self.in_to_px(*xy), self._basic_to_str(text), **kwargs)
+        return super().text(self.in_to_px(xy), self._basic_to_str(text), **kwargs)
 
     def multiline_text(self, xy, text):
         self._update_fill(kwargs)
-        return super().multiline_text(self.in_to_px(*xy), self._basic_to_str(text), **kwargs)
+        return super().multiline_text(self.in_to_px(xy), self._basic_to_str(text), **kwargs)
 
     def textsize(self, text, **kwargs):
         return self.px_to_in(*super().textsize(self._basic_to_str(text), **kwargs))
@@ -102,7 +110,7 @@ class ImageDrawInches(ImageDraw.ImageDraw):
                 text = text[:-1]
                 w, h = super().textsize(text, **size_args)
 
-        x, y = self.in_to_px(*xy)
+        x, y = self.in_to_px(xy)
 
         if h_align == 'center':
             x = int(x) - int(w / 2)
@@ -166,7 +174,7 @@ class BadgeTemplate:
         self._draw_func(renderer, data)
 
     def render(self, data, fp, format=None):
-        image = Image.new(self._image_mode, in_to_px(*self._size, dpi=self._dpi), self._bg_color)
+        image = Image.new(self._image_mode, in_to_px(self._size, dpi=self._dpi), self._bg_color)
         draw = ImageDrawInches(image, self._image_mode, fill_color=self._fg_color)
         renderer = self.Renderer(image, draw, self._dpi, self._default_font)
         self.draw_badge(renderer, data)
