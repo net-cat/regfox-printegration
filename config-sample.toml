@@ -22,3 +22,13 @@ start_date = "1955-09-12"
 #  * The --search-registrants and --get-registrants will use one API call per 50 registrants.
 database_file = ":memory:"
 
+[printer]
+
+# The name of the event as displayed on the badges.
+event_name = "Event Name Here"
+
+# Default CUPS printer to use.
+printer_name = "DYMO-LabelWriter-450"
+
+# Default font to print badges with. (This can be overridden in the template.)
+default_font = "LiberationSansNarrow-Regular.ttf"

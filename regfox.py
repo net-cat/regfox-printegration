@@ -186,12 +186,12 @@ class RegFoxCache:
 
     def process_age(self, registrant_dict):
         registrant_dict['dateOfBirth'] = self.date_from_database(registrant_dict['dateOfBirth'])
-        registrant_dict['ageAtCon'] = self.calculate_age(registrant_dict['dateOfBirth'], self._start_date)
+        registrant_dict['ageAtEvent'] = self.calculate_age(registrant_dict['dateOfBirth'], self._start_date)
         registrant_dict['ageNow'] = self.calculate_age(registrant_dict['dateOfBirth'])
 
     def unprocess_age(self, registrant_dict):
         registrant_dict['dateOfBirth'] = self.date_to_database(registrant_dict['dateOfBirth'])
-        del registrant_dict['ageAtCon']
+        del registrant_dict['ageAtEvent']
         del registrant_dict['ageNow']
 
     async def sync(self, *, rebuild=False):

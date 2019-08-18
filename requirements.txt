@@ -1,7 +1,8 @@
 aiohttp
-aiohttp_mako
 aiodns
 aiosqlite
 cchardet
+pillow
+pycups
 toml
 

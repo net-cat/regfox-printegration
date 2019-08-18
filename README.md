@@ -52,3 +52,8 @@ This script is for a specific event. I'm happy to take PR's that help make it mo
 * Running `frontend.py` will make no attempt to populate your cache.
 * Running with a `:memory:` database will probably not work very well. (This is TODO, like a lot of other things.)
 
+# License
+
+This software is Copyright (c) 2019 [net-cat](https://github.com/net-cat) and is distributed under the GNU General Public License version 3.0
+
+The `LiberationSansNarrow-Regular.ttf` font is Copyright (c) 2012 Red Hat, Inc and is distributed under the SIL Open Font License.
