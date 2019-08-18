@@ -135,21 +135,23 @@ class ImageDrawInches(ImageDraw.ImageDraw):
 class TemplateError(Exception):
     pass
 
+def _use_color_defaults(image_mode, background_color, foreground_color):
+    try:
+        if background_color is None:
+            background_color = DEFAULT_COLOR_LOOKUP[image_mode][0]
+        if foreground_color is None:
+            foreground_color = DEFAULT_COLOR_LOOKUP[image_mode][1]
+    except KeyError:
+        raise TemplateError("I don't know how to handle the image mode {!r}. You must manually specify background_color and foreground_color.".format(image_mode))
+    return background_color, foreground_color
+
 class BadgeTemplate:
     def __init__(self, size, draw_func, *, image_mode=MODE_GRAYSCALE, dpi=DEFAULT_DPI, default_font=None, background_color=None, foreground_color=None):
         self._dpi = float(DEFAULT_DPI)
         self._draw_func = draw_func
         self._size = size
         self._default_font = None
-
-        try:
-            if background_color is None:
-                self._bg_color = DEFAULT_COLOR_LOOKUP[image_mode][0]
-            if foreground_color is None:
-                self._fg_color = DEFAULT_COLOR_LOOKUP[image_mode][1]
-        except KeyError:
-            raise TemplateError("I don't know how to handle the image mode {!r}. You must manually specify background_color and foreground_color.".format(image_mode))
-
+        self._bg_color, self._fg_color = _use_color_defaults(image_mode, background_color, foreground_color)
 
     class Renderer:
         def __init__(self, image, draw, dpi, default_font):
@@ -186,13 +188,7 @@ class BadgeTemplate:
         return 'Custom.{}x{}in'.format(self._size[1], self._size[0])
 
 def make_template(width_in, height_in, *, image_mode=MODE_GRAYSCALE, dpi=DEFAULT_DPI, default_font=None, background_color=None, foreground_color=None):
-    try:
-        if background_color is None:
-            background_color = DEFAULT_COLOR_LOOKUP[image_mode][0]
-        if foreground_color is None:
-            foreground_color = DEFAULT_COLOR_LOOKUP[image_mode][1]
-    except KeyError:
-        raise TemplateError("I don't know how to handle the image mode {!r}. You must manually specify background_color and foreground_color.".format(image_mode))
+    background_color, foreground_color = _use_color_defaults(image_mode, background_color, foreground_color)
 
     def subclass_init(self, *, dpi=dpi, default_font=default_font):
         self._dpi = dpi
