@@ -14,13 +14,13 @@ Status: Pretty done. Needs cleanup. Might need a few features added.
 
 Provides a HTTPS server that will allow you to check in and print badges.
 
-Status: Not started.
+Status: Needs all the business logic and a bunch of stuff plumbed together. Also the "S" part of HTTPS.
 
-### printing.py
+### printegration.py
 
 Handles generating the badges and sending them to the printer.
 
-Status: Not started.
+Status: Basically done.
 
 ## Notes
 
