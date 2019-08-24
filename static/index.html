@@ -3,34 +3,31 @@
 <head>
 <title>Print Interface</title>
 <script src="/static/jquery.min.js"></script>
+<script src="/static/jsrender.min.js"></script>
 <script src="/static/accordion.js"></script>
-<script src="/static/htmltemplate.js"></script>
 <script src="/static/interface.js"></script>
 <link href="/static/style.css" rel="stylesheet">
-<template id="badgeTableRow">
-<tr class="ac_title">
-<td class="badgeTableRow_attendeeBadgeName"></td>
-<td class="badgeTableRow_firstName"></td>
-<td class="badgeTableRow_lastName"></td>
-<td class="badgeTableRow_badgeLevel"></td>
-<td class="badgeTableRow_status"></td>
+<script id="badgeTableRow" type="text/x-jsrender">
+<tr class="ac_title" id="{{>registrantId}}">
+<td>{{>attendeeBadgeName}}</td>
+<td>{{>firstName}}</td>
+<td>{{>lastName}}</td>
+<td>{{>badgeLevel}}</td>
+<td>{{>status}}</td>
 </tr>
-<tr class="ac_data">
+<tr class="ac_data" id="{{>registrantId}}">
 <td colspan="5">
 <ul>
-<li>Email: <span class="badgeTableRow_email"></span></li>
-<li>Birthday: <span class="badgeTableRow_dateOfBirth"></span></li>
-<li>Phone Number: <span class="badgeTableRow_phone"></span></li>
-<li>Zip Code: <span class="badgeTableRow_billingZip"></span></li>
-<li>Country: <span class="badgeTableRow_billingCountry"></span></li>
-<li>
-Age at Event: <span class="badgeTableRow_ageAtEvent"></span>
-(Now: <span class="badgeTableRow_ageNow"></span>)
-</li>
+<li>Email: {{>email}}</li>
+<li>Birthday: {{>dateOfBirth}}</li>
+<li>Phone Number: {{>phone}}</li>
+<li>Zip Code: {{>billingZip}}</li>
+<li>Country: {{>billingCountry}}</li>
+<li>Age at Event: {{>ageAtEvent}} (Now: {{>ageNow}})</li>
 </ul>
 </td>
 </tr>
-</template>
+</script>
 </head>
 <body>
 <form>
@@ -41,11 +38,11 @@ Search: <input type="text" value="" id="searchBox">
 <table id="badgeTable">
 <thead>
 <tr>
-<td class="badgeTableRow_attendeeBadgeName">Badge Name</td>
-<td class="badgeTableRow_firstName">First Name</td>
-<td class="badgeTableRow_lastName">Last Name</td>
-<td class="badgeTableRow_badgeLevel">Badge Level</td>
-<td class="badgeTableRow_status">Order Status</td>
+<td>Badge Name</td>
+<td>First Name</td>
+<td>Last Name</td>
+<td>Badge Level</td>
+<td>Order Status</td>
 </tr>
 </thead>
 <tbody id="badgeTableBody">

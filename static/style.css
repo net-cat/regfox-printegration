@@ -1,2 +1,27 @@
 table, tr, td { border: 1px solid black; border-collapse: collapse; }
 .ac_hidden { display: none; }
+
+body {
+  font-family: sans-serif;
+  font-size: 12pt;
+}
+
+input {
+  font-size: 0.8em;
+  border-radius: 0.25em;
+  padding : 0.5em 0.5em;
+}
+
+input[type="text"] {
+  margin  : 0;
+  background: white;
+  border  : 0.1em solid gray;
+}
+
+input[type="text"]:focus {
+  border       : 0.1em solid black;
+}
+
+input#searchBox {
+  width   : 20em;
+}

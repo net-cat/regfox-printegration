@@ -41,9 +41,10 @@ This script is for a specific event. I'm happy to take PR's that help make it mo
 5. Install the requirements: `python -m pip install -r requirements.txt`
 6. Copy and edit your config file. (Please don't check your API key into the repo. For now, don't use `:memory:` databases.)
 7. Pull jQuery into the static folder: `wget https://code.jquery.com/jquery-3.4.1.min.js -Ostatic/jquery.min.js` (3.4.1 is the latest version at the time of this writing.)
-8. Run the script to sync the cache: `python regfox.py -c your_config_file.toml`
-9. Run the frontend: `python frontend.py -c your_config_file.toml`
-10. Browse to http://127.0.0.1:8080/static/index.html
+8. Pull JsRender into the static folder: `wget https://www.jsviews.com/download/jsrender.min.js -Ostatic/jsrender.min.js`
+9. Run the script to sync the cache: `python regfox.py -c your_config_file.toml`
+10. Run the frontend: `python frontend.py -c your_config_file.toml`
+11. Browse to http://127.0.0.1:8080/static/index.html
 
 ### Notes:
 
