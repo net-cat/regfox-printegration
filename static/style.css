@@ -1,27 +1,78 @@
-table, tr, td { border: 1px solid black; border-collapse: collapse; }
-.ac_hidden { display: none; }
+html,body {
+    margin:0 !important;
+    padding:0 !important;
+}
 
 body {
+  width:100%;
   font-family: sans-serif;
   font-size: 12pt;
+}
+
+.page-container {
+    padding: 1em;
 }
 
 input {
   font-size: 0.8em;
   border-radius: 0.25em;
-  padding : 0.5em 0.5em;
+  padding: 0.5em 0.5em;
 }
 
 input[type="text"] {
-  margin  : 0;
+  margin: 0;
   background: white;
-  border  : 0.1em solid gray;
 }
 
 input[type="text"]:focus {
-  border       : 0.1em solid black;
 }
 
 input#searchBox {
-  width   : 20em;
+    width: 20em;
 }
+
+h1 {
+    font-weight: 600;
+    font-size: 1.25em;
+}
+
+.badge-table-container, .badge-table-container-results {
+    min-width: 100%;
+    width: 100%;
+    display: table;
+}
+
+.badge-table-title, .badge-table-row {
+    width: 100%;
+    display: table-row;
+}
+
+.badge-table-title{
+    background: rgba(180,180,220,1);
+}
+
+.badge-table-row:nth-child(4n+1), .badge-table-row:nth-child(4n+2) {
+    background: rgba(215,215,235,1);
+}
+
+.badge-table-row:nth-child(4n+3), .badge-table-row:nth-child(4n+4) {
+    background: rgba(235,235,235,1);
+}
+
+.badge-table-hoverable:hover {
+    background: rgba(255,255,128,1);
+}
+
+.badge-table-item {
+    display: table-cell;
+    padding: 0.5em 0;
+}
+
+.badge-table-item-indicator { width: 2em; text-align: center; }
+.badge-table-item-main { width: auto; }
+.badge-table-item-small { width: 10%; }
+.badge-table-item li { list-style-type: none; }
+
+.ac_condensed::before { content: "\25B6"; }
+.ac_expanded::before { content: "\25BC"; }
+.ac_hidden { display: none; }

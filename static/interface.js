@@ -1,13 +1,13 @@
 function update_table(data)
 {
-	$("#badgeTableBody").empty();
+	$("#badgeTable").empty();
 	for(var entry of data)
 	{
 		tpl = $.templates("#badgeTableRow");
 		var row = tpl.render(entry);
-		$("#badgeTableBody").append(row);
+		$("#badgeTable").append(row);
 	}
-	accordion_make($("#badgeTableBody"));
+	accordion_make($("#badgeTable"));
 }
 
 function update_search(ev)

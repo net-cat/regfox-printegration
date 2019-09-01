@@ -2,8 +2,9 @@
 /**
  * CSS Classes
  * ac_many - Set on the root element if the accordion should allow multiple items to be open.
- * ac_title - Set on <li> and <tr> elements to indicate that it is a title element. (Implied on <dt> elements.)
- * ac_data - Set on <li> and <tr> elements to indicate that it is a data element. (Implied on <dd> elements.)
+ * ac_root - Set on <div> elements to indicate that it is a table root.
+ * ac_title - Set on <div>, <li> and <tr> elements to indicate that it is a title element. (Implied on <dt> elements.)
+ * ac_data - Set on <div>, <li> and <tr> elements to indicate that it is a data element. (Implied on <dd> elements.)
  * ac_expanded - Set for any title element that has been expandeded.
  * ac_condensed - Set for any title element that has been collapsed.
  * ac_hidden - Set for any data element that is hidden.
@@ -15,9 +16,9 @@
 /**
  * Turn a <table>, <dl>, <ol> or <ul> element into an accordion.
  *
- * Root elements can be: <table>, <dl>, <ol> or <ul>.
- * Title elements can be: <tr class="ac_title">, <dt> or <li class="ac_title">
- * Data elements can be: <tr class="ac_data">, <dd> or <li class="ac_data">
+ * Root elements can be: <table>, <tbody>, <div class="ac_root">, <dl>, <ol> or <ul>.
+ * Title elements can be: <tr class="ac_title">, <div class="ac_title>, <dt> or <li class="ac_title">
+ * Data elements can be: <tr class="ac_data">, <div class="ac_data">, <dd> or <li class="ac_data">
  *
  * If not using auto_id, data and title elements must have the same id attribute.
  *
@@ -173,11 +174,11 @@ function accordion_expand_all(root_elem)
 /// Given a title and data element, add ac_title and ac_data if they are not already present.
 function _accordion_add_classes_if_needed(title_elem, data_elem)
 {
-	if (title_elem !== null && (title_elem.prop("tagName") == "TR" || title_elem.prop("tagName") == "LI") && !title_elem.hasClass("ac_title"))
+	if (title_elem !== null && (title_elem.prop("tagName") == "TR" || title_elem.prop("tagName") == "LI" || title_elem.prop("tagName") == "DIV") && !title_elem.hasClass("ac_title"))
 	{
 		title_elem.addClass("ac_title");
 	}
-	if (data_elem !== null && (data_elem.prop("tagName") == "TR" || data_elem.prop("tagName") == "LI") && !data_elem.hasClass("ac_data"))
+	if (data_elem !== null && (data_elem.prop("tagName") == "TR" || data_elem.prop("tagName") == "LI" || data_elem.prop("tagName") == "DIV") && !data_elem.hasClass("ac_data"))
 	{
 		data_elem.addClass("ac_data");
 	}
@@ -200,7 +201,7 @@ function _accordion_generate_element_id(root_elem, data_id, is_data, get_elem=fa
 /// Query all accordion elements within a root element.
 function _accordion_all_elements(root_elem)
 {
-	return root_elem.find("dt,dd,tr,li");
+	return root_elem.find("dt,dd,tr,li,div");
 }
 
 /// Element is <dt> or has "ac_title" class
@@ -244,8 +245,8 @@ function _accordion_element_magic(root_elem, elem, id=null)
 	return data_id;
 }
 
-/// Set the appropitate classes on the element for the requested expansion state.
-function _accordion_set_element_state(elem, is_expanded)
+/// Find indicator elements
+function _accordion_find_indicators(elem)
 {
 	let indicators = elem.find(".ac_indicator");
 
@@ -254,7 +255,13 @@ function _accordion_set_element_state(elem, is_expanded)
 		indicators = [elem];
 	}
 
-	$.each(indicators, function(index) {
+	return indicators;
+}
+
+/// Set the appropitate classes on the element for the requested expansion state.
+function _accordion_set_element_state(elem, is_expanded)
+{
+	$.each(_accordion_find_indicators(elem), function(index) {
 		if (is_expanded)
 		{
 			$(this).addClass("ac_expanded");
@@ -285,7 +292,15 @@ function _accordion_set_element_state(elem, is_expanded)
 /// True if the title element has been expanded
 function _accordion_title_is_expanded(title_elem)
 {
-	return !title_elem.hasClass("ac_condensed") || title_elem.hasClass("ac_expanded");
+	var indicators = _accordion_find_indicators(title_elem);
+
+	if (!indicators.length)
+	{
+		return false;
+	}
+
+	var indicator = $(indicators[0]);
+	return !indicator.hasClass("ac_condensed") || indicator.hasClass("ac_expanded");
 }
 
 /// Click event handler for title.

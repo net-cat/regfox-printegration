@@ -1,52 +1,63 @@
 <!doctype html>
 <html>
+
 <head>
-<title>Print Interface</title>
-<script src="/static/jquery.min.js"></script>
-<script src="/static/jsrender.min.js"></script>
-<script src="/static/accordion.js"></script>
-<script src="/static/interface.js"></script>
-<link href="/static/style.css" rel="stylesheet">
-<script id="badgeTableRow" type="text/x-jsrender">
-<tr class="ac_title" id="{{>registrantId}}">
-<td>{{>attendeeBadgeName}}</td>
-<td>{{>firstName}}</td>
-<td>{{>lastName}}</td>
-<td>{{>badgeLevel}}</td>
-<td>{{>status}}</td>
-</tr>
-<tr class="ac_data" id="{{>registrantId}}">
-<td colspan="5">
-<ul>
-<li>Email: {{>email}}</li>
-<li>Birthday: {{>dateOfBirth}}</li>
-<li>Phone Number: {{>phone}}</li>
-<li>Zip Code: {{>billingZip}}</li>
-<li>Country: {{>billingCountry}}</li>
-<li>Age at Event: {{>ageAtEvent}} (Now: {{>ageNow}})</li>
-</ul>
-</td>
-</tr>
-</script>
+    <title>Print Interface</title>
+    <script src="/static/jquery.min.js"></script>
+    <script src="/static/jsrender.min.js"></script>
+    <script src="/static/accordion.js"></script>
+    <script src="/static/interface.js"></script>
+    <link href="/static/style.css" rel="stylesheet">
+    <script id="badgeTableRow" type="text/x-jsrender">
+            <div class="ac_title badge-table-row badge-table-hoverable" id="{{>registrantId}}">
+                <div class="badge-table-item badge-table-item-indicator ac_indicator"></div>
+                <div class="ac_target badge-table-item badge-table-item-main">{{>attendeeBadgeName}}</div>
+                <div class="ac_target badge-table-item badge-table-item-small">{{>firstName}}</div>
+                <div class="ac_target badge-table-item badge-table-item-small">{{>lastName}}</div>
+                <div class="ac_target badge-table-item badge-table-item-small">{{>badgeLevel}}</div>
+                <div class="ac_target badge-table-item badge-table-item-small">{{>status}}</div>
+            </div>
+            <div class="ac_data badge-table-row" id="{{>registrantId}}">
+                <div class="badge-table-item badge-table-indicator"></div>
+                <div class="badge-table-item badge-table-item-main">
+                    <li><strong>Email:</strong> {{>email}}</li>
+                    <li><strong>DOB:</strong> {{>dateOfBirth}}</li>
+                    <li><strong>Age at Event:</strong> {{>ageAtEvent}} (<strong>Current:</strong> {{>ageNow}})</li>
+                    <li><strong>Phone:</strong> {{>phone}}</li>
+                    <li><strong>Zip:</strong> {{>billingZip}}</li>
+                    <li><strong>Country:</strong> {{>billingCountry}}</li>
+                </div>
+                <div class="badge-table-item"></div>
+                <div class="badge-table-item"></div>
+                <div class="badge-table-item"></div>
+                <div class="badge-table-item"></div>
+            </div>
+    </script>
 </head>
+
 <body>
-<form>
-Search: <input type="text" value="" id="searchBox">
-<input type="button" value="Search" id="updateSearch">
-<input type="button" value="Clear" id="clearSearch">
-</form>
-<table id="badgeTable">
-<thead>
-<tr>
-<td>Badge Name</td>
-<td>First Name</td>
-<td>Last Name</td>
-<td>Badge Level</td>
-<td>Order Status</td>
-</tr>
-</thead>
-<tbody id="badgeTableBody">
-</tbody>
-</table>
+    <div class="page-container">
+        <form>
+            Search: <input type="text" value="" id="searchBox">
+            <input type="button" value="Search" id="updateSearch">
+            <input type="button" value="Clear" id="clearSearch">
+        </form>
+
+        <hr>
+
+        <div class="badge-table-container">
+            <div class="badge-table-title">
+                <div class="badge-table-item badge-table-item-indicator"></div>
+                <div class="badge-table-item badge-table-item-main"><h1>Badge Name</h1></div>
+                <div class="badge-table-item badge-table-item-small"><h1>First Name</h1></div>
+                <div class="badge-table-item badge-table-item-small"><h1>Last Name</h1></div>
+                <div class="badge-table-item badge-table-item-small"><h1>Badge Level</h1></div>
+                <div class="badge-table-item badge-table-item-small"><h1>Order Status</h1></div>
+            </div>
+        </div>
+        <div class="badge-table-container-results" id="badgeTable">
+        </div>
+    </div>
 </body>
+
 </html>
