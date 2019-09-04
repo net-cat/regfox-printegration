@@ -3,6 +3,7 @@ import aiohttp
 import aiosqlite
 import pprint
 import datetime
+import iso8601
 import os
 import sys
 import toml
@@ -98,6 +99,12 @@ class RegFoxClientSession(aiohttp.ClientSession):
         uri = '/coupons/{}'.format(id_)
         return await self.api_get(uri, **params)
 
+    async def check_in(self, **params):
+        return await self.api_request('POST', '/registrant/check-in', **params)
+
+    async def check_out(self, **params):
+        return await self.api_request('POST', '/registrant/check-out', **params)
+
 class RegFoxCache:
     def __init__(self, client_session, config):
         self._client_session = client_session
@@ -128,7 +135,8 @@ class RegFoxCache:
                     phone TEXT NOT NULL,
                     billingCountry TEXT,
                     billingZip TEXT,
-                    checkedIn INT NOT NULL
+                    checkedIn INT NOT NULL,
+                    dateCheckedIn INT
                 )
             ''')
             await self._db.commit()
@@ -176,6 +184,24 @@ class RegFoxCache:
         return datetime.date.fromordinal(database_date)
 
     @staticmethod
+    def datetime_from_regfox(incoming_date):
+        if incoming_date is None:
+            return None
+        return iso8601.parse_date(incoming_date)
+
+    @staticmethod
+    def datetime_to_database(datetime_object):
+        if datetime_object is None:
+            return None
+        return int(datetime_object.timestamp())
+
+    @staticmethod
+    def datetime_from_database(database_date):
+        if database_date is None:
+            return None
+        return datetime.datetime.utcfromtimestamp(database_date)
+
+    @staticmethod
     def calculate_age(dob, now=datetime.date.today()):
         if not dob or now < dob:
             return 0
@@ -184,15 +210,19 @@ class RegFoxCache:
             age -= 1
         return age
 
-    def process_age(self, registrant_dict):
+    def pythonify_row(self, registrant_dict):
         registrant_dict['dateOfBirth'] = self.date_from_database(registrant_dict['dateOfBirth'])
         registrant_dict['ageAtEvent'] = self.calculate_age(registrant_dict['dateOfBirth'], self._start_date)
         registrant_dict['ageNow'] = self.calculate_age(registrant_dict['dateOfBirth'])
+        registrant_dict['checkedIn'] = bool(registrant_dict['checkedIn'])
+        registrant_dict['dateCheckedIn'] = self.datetime_from_database(registrant_dict['dateCheckedIn'])
 
-    def unprocess_age(self, registrant_dict):
+    def unpythonify_row(self, registrant_dict):
         registrant_dict['dateOfBirth'] = self.date_to_database(registrant_dict['dateOfBirth'])
         del registrant_dict['ageAtEvent']
         del registrant_dict['ageNow']
+        registrant_dict['checkedIn'] = int(registrant_dict['checkedIn'])
+        registrant_dict['dateCheckedIn'] = self.datetime_to_database(registrant_dict['dateCheckedIn'])
 
     async def sync(self, *, rebuild=False):
         async with self._db_lock:
@@ -245,7 +275,8 @@ class RegFoxCache:
                     fields.get('phone', None), # phone
                     order_dict[registrant['orderId']]['billing']['address'].get('country', None), # billingCountry
                     order_dict[registrant['orderId']]['billing']['address'].get('postalCode', None), # billingZip
-                    registrant['checkedIn'] # checkedIn
+                    registrant['checkedIn'], # checkedIn
+                    self.datetime_to_database(self.datetime_from_regfox(registrant.get('dateCheckedIn', None))), # dateCheckedIn
                 ])
 
             print("ADDED:", len(inserts))
@@ -268,14 +299,15 @@ class RegFoxCache:
                     phone,
                     billingCountry,
                     billingZip,
-                    checkedIn
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    checkedIn,
+                    dateCheckedIn
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', inserts)
             await self._db.commit()
 
     def registrant_row_to_dict(self, reg):
         reg_dict = dict(reg)
-        self.process_age(reg_dict)
+        self.pythonify_row(reg_dict)
         return reg_dict
 
     async def search_registrants(self, criteria='', limit=0, offset=0):
@@ -305,6 +337,47 @@ class RegFoxCache:
                 raise RuntimeError('Registrant {} found multiple times. (This should be impossible since that column is the primary key.)'.format(id_))
             return self.registrant_row_to_dict(await cursor.fetchone())
 
+    def _make_checkin_data_dict(self, id_, time=None):
+        data = {}
+
+        if isinstance(id_, int):
+            data['id'] = id_
+        elif isinstance(id_, str):
+            data['displayId'] = id_
+        else:
+            raise TypeError('id_ should be str for displayId or int for id')
+
+        if time is None:
+            data['date'] = datetime.datetime.utcnow().isoformat() + 'Z'
+        else:
+            data['date'] = time.isoformat() + 'Z'
+
+        return data
+
+    async def check_in_by_id(self, id_, time=None):
+        check_in_data = await self._client_session.check_in(json=self._make_checkin_data_dict(id_, time))
+
+        if check_in_data['responseCode'] != 200:
+            return False
+
+        async with self._db_lock:
+            await self._db.execute(
+                '''update badges set dateCheckedIn=?, checkedIn=? where registrantId=?''',
+                (
+                    self.datetime_to_database(self.datetime_from_regfox(check_in_data['data']['date'])),
+                    1,
+                    check_in_data['data']['id']
+                ))
+            await self._db.commit()
+
+        return True
+
+
+    async def check_out_by_id(self, id_, time=None):
+        # This endpoint appears to not be functional at this time.
+        #return await self._client_session.check_out(json=self._make_checkin_data_dict(id_, time))
+        return False
+
 async def display_form_ids(config_file):
     config = toml.load(config_file)
     async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
@@ -328,6 +401,20 @@ async def get_registrant(config_file, id_):
             await cache.sync()
             pprint.pprint(await cache.get_registrant(id_))
 
+async def check_in(config_file, id_):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
+            await cache.sync()
+            pprint.pprint(await cache.check_in_by_id(id_))
+
+async def check_out(config_file, id_):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
+            await cache.sync()
+            pprint.pprint(await cache.check_out_by_id(id_))
+
 async def main(config_file):
     config = toml.load(config_file)
     async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
@@ -342,6 +429,8 @@ if __name__ == '__main__':
     parser.add_argument('--show-forms', action='store_true', help='Show all forms (events) that are accessible with the provided configuration.')
     parser.add_argument('--search-registrants', dest='search_criteria', default=None, required=False, help='Search for registrants with the given criteria.')
     parser.add_argument('--get-registrant', dest='registrant_id', default=None, required=False, type=int, help='Get registrant by registrantId.')
+    parser.add_argument('--check-in', dest='check_in_id', default=None, required=False, type=int, help='Check in user by registrantId.')
+    parser.add_argument('--check-out', dest='check_out_id', default=None, required=False, type=int, help='Check out user by registrantId.')
     args = parser.parse_args()
 
     loop = asyncio.get_event_loop()
@@ -351,6 +440,10 @@ if __name__ == '__main__':
         loop.run_until_complete(search_registrants(args.configuration, args.search_criteria))
     elif args.registrant_id is not None:
         loop.run_until_complete(get_registrant(args.configuration, args.registrant_id))
+    elif args.check_in_id is not None:
+        loop.run_until_complete(check_in(args.configuration, args.check_in_id))
+    elif args.check_out_id is not None:
+        loop.run_until_complete(check_out(args.configuration, args.check_out_id))
     else:
         loop.run_until_complete(main(args.configuration))
     loop.close()
