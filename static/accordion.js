@@ -102,6 +102,75 @@ function accordion_add_item_after(root_elem, target_id, title_elem, data_elem, n
 }
 
 /**
+ * Remove the elements associated with the given ID.
+ *
+ * @param root_elem The jQuery element that has had accordion_make() called on it.
+ * @param id The ID, as returned from accordion_add_item_end or the original element id attribute.
+ */
+function accorion_remove_item(root_elem, id)
+{
+	var title_elem = accordion_get_title_elem(root_elem, id);
+	var data_elem = accordion_get_data_elem(root_elem, id);
+
+	if (title_elem)
+	{
+		title_elem.remove();
+	}
+
+	if (data_elem)
+	{
+		data_elem.remove();
+	}
+}
+
+/**
+ * Replace the element with the given id with a new element. Previous state is maintained.
+ *
+ * @param root_elem The jQuery element that has had accordion_make() called on it.
+ * @param id The ID, as returned from accordion_add_item_end or the original element id attribute, of the attribute to replace.
+ * @param new_title_elem The new title element.
+ * @param new_data_elem The new data element.
+ * @param new_id The id of the new data. (null will use the title_elem's id attribute, false will use id.)
+ * @returns true if replacement was successful, false if not.
+ */
+function accordion_replace_item(root_elem, id, new_title_elem, new_data_elem, new_id=false)
+{
+	var title_elem = accordion_get_title_elem(root_elem, id);
+	var data_elem = accordion_get_data_elem(root_elem, id);
+
+	if (!title_elem || !data_elem)
+	{
+		return false;
+	}
+
+	if (new_id === false)
+	{
+		new_id = id;
+	}
+
+	new_id = _accordion_element_magic(root_elem, new_title_elem, new_id);
+	_accordion_element_magic(root_elem, new_data_elem, new_id);
+	data_elem.after(new_title_elem, new_data_elem);
+	var old_elem_state = _accordion_title_is_expanded(title_elem);
+	title_elem.remove();
+	data_elem.remove();
+	_accordion_set_item_state(new_title_elem, new_data_elem, root_elem, old_elem_state);
+}
+
+/**
+ * Get the current state of the given item.
+ *
+ * @param root_elem The jQuery element that has had accordion_make() called on it.
+ * @param id The ID, as returned from accordion_add_item_end or the original element id attribute.
+ * @returns the current state.
+ */
+function accordion_get_item_state(root_elem, id)
+{
+	var title_elem = _accordion_generate_element_id(root_elem, id, false, true);
+	return _accordion_title_is_expanded(title_elem);
+}
+
+/**
  * Set or toggle the state of an item of an accordion element.
  *
  * @param root_elem The jQuery element that has had accordion_make() called on it.
@@ -127,7 +196,7 @@ function accordion_set_item_state(root_elem, id, new_state=null)
  */
 function accordion_get_title_elem(root_elem, id)
 {
-	return _accordion_generate_element_id(root_elem, target_id, false, true);
+	return _accordion_generate_element_id(root_elem, id, false, true);
 }
 
 /**
@@ -139,7 +208,7 @@ function accordion_get_title_elem(root_elem, id)
  */
 function accordion_get_data_elem(root_elem, id)
 {
-	return _accordion_generate_element_id(root_elem, target_id, true, true);
+	return _accordion_generate_element_id(root_elem, id, true, true);
 }
 
 /**
