@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import aiosqlite
+from collections import OrderedDict
 import pprint
 import datetime
 import iso8601
@@ -224,6 +225,48 @@ class RegFoxCache:
         registrant_dict['checkedIn'] = int(registrant_dict['checkedIn'])
         registrant_dict['dateCheckedIn'] = self.datetime_to_database(registrant_dict['dateCheckedIn'])
 
+    def _parse_options(self, registrant):
+        fields = {}
+        field_labels = {}
+
+        for datum in registrant['fieldData']:
+            path = datum['path']
+            if '.' in path:
+                root, leaf = path.split('.', 1)
+                if root in fields:
+                    datum['path'] = leaf
+                    fields[root] = datum
+                else:
+                    fields[path] = datum['value']
+                    field_labels[path] = datum['label']
+            else:
+                fields[path] = datum['value']
+                field_labels[path] = datum['label']
+
+        return fields, field_labels
+
+    def _regfox_to_database(self, registrant, fields=None, order_dict=None):
+        if fields is None:
+            fields = self._parse_options(registrant)[0]
+        values = OrderedDict()
+        values['registrantId'] = registrant['id']
+        values['displayId'] = registrant['displayId']
+        values['orderId'] = registrant['orderId']
+        values['badgeLevel'] = fields['registrationOptions']['label']
+        values['status'] = registrant['status']
+        values['firstName'] = fields.get('name.first', None)
+        values['lastName'] = fields.get('name.last', None)
+        values['email'] = fields.get('email', None)
+        values['attendeeBadgeName'] = fields.get('attendeeBadgeName', None)
+        values['dateOfBirth'] = self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None)))
+        values['phone'] = fields.get('phone', None)
+        if order_dict is not None:
+            values['billingCountry'] = order_dict[registrant['orderId']]['billing']['address'].get('country', None)
+            values['billingZip'] = order_dict[registrant['orderId']]['billing']['address'].get('postalCode', None)
+        values['checkedIn'] = registrant['checkedIn']
+        values['dateCheckedIn'] = self.datetime_to_database(self.datetime_from_regfox(registrant.get('dateCheckedIn', None)))
+        return values
+
     async def sync(self, *, rebuild=False):
         async with self._db_lock:
             registrant_params = {}
@@ -244,65 +287,25 @@ class RegFoxCache:
                 self._client_session.search_orders(formId=self._form_id, **order_params),
             )
             inserts = []
-
+            columns = None
             order_dict = self.list_to_dict(orders)
 
             for registrant in registrants:
-                REG_OPTION_PATH = 'registrationOptions'
-
-                options = {}
-                selected_option = None
-                fields = {}
-                for datum in registrant['fieldData']:
-                    if datum['path'] == REG_OPTION_PATH:
-                        selected_option = datum['value']
-                    elif datum['path'].startswith(REG_OPTION_PATH):
-                        options[datum['path'][len(REG_OPTION_PATH)+1:]] = datum['label']
-                    else:
-                        fields[datum['path']] = datum['value']
-
-                inserts.append([
-                    registrant['id'], # registrantId
-                    registrant['displayId'], # displayId
-                    registrant['orderId'], # orderId
-                    options[selected_option], # badgeLevel
-                    registrant['status'],
-                    fields.get('name.first', None), #registrant['firstName'], # firstName
-                    fields.get('name.last', None), #registrant['lastName'], # lastName
-                    fields.get('email', None), # email
-                    fields.get('attendeeBadgeName', None), # attendeeBadgeName
-                    self.date_to_database(self.date_from_regfox(fields.get('dateOfBirth', None))), # dateOfBirth
-                    fields.get('phone', None), # phone
-                    order_dict[registrant['orderId']]['billing']['address'].get('country', None), # billingCountry
-                    order_dict[registrant['orderId']]['billing']['address'].get('postalCode', None), # billingZip
-                    registrant['checkedIn'], # checkedIn
-                    self.datetime_to_database(self.datetime_from_regfox(registrant.get('dateCheckedIn', None))), # dateCheckedIn
-                ])
+                values = self._regfox_to_database(registrant, None, order_dict)
+                if columns is None:
+                    columns = list(values.keys())
+                inserts.append(list(values.values()))
 
             print("ADDED:", len(inserts))
 
             if rebuild:
                 await self._db.execute('delete from badges')
 
-            await self._db.executemany('''
-                insert into badges (
-                    registrantId,
-                    displayId,
-                    orderId,
-                    badgeLevel,
-                    status,
-                    firstName,
-                    lastName,
-                    email,
-                    attendeeBadgeName,
-                    dateOfBirth,
-                    phone,
-                    billingCountry,
-                    billingZip,
-                    checkedIn,
-                    dateCheckedIn
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', inserts)
+            if inserts:
+                insert_columns = ', '.join(columns)
+                insert_placeholders = ', '.join(['?'] * len(columns))
+                await self._db.executemany('insert into badges ({}) values ({})'.format(insert_columns, insert_placeholders), inserts)
+
             await self._db.commit()
 
     def registrant_row_to_dict(self, reg):
@@ -336,6 +339,26 @@ class RegFoxCache:
             if cursor.rowcount > 1:
                 raise RuntimeError('Registrant {} found multiple times. (This should be impossible since that column is the primary key.)'.format(id_))
             return self.registrant_row_to_dict(await cursor.fetchone())
+
+    async def update_registrant(self, id_):
+        async with self._db_lock:
+            registrant = await self._client_session.search_registrants(id_)
+            if not registrant:
+                return None
+
+            values = self._regfox_to_database(registrant)
+            update_columns = ', '.join(['{}=?'.format(col) for col in list(values.keys())])
+            update_substitutions = list(list(values.values()))
+            update_substitutions.append(id_)
+
+            async with self._db.execute('update badges set {} where registrantId=?'.format(update_columns), update_substitutions) as cursor:
+                if cursor.rowcount == 0:
+                    return None
+                if cursor.rowcount > 1:
+                    raise RuntimeError('Somehow multiple rows were updated. This should be impossible. Rolling back transaction...')
+
+            await self._db.commit()
+        return await self.get_registrant(id_)
 
     def _make_checkin_data_dict(self, id_, time=None):
         data = {}
@@ -401,6 +424,13 @@ async def get_registrant(config_file, id_):
             await cache.sync()
             pprint.pprint(await cache.get_registrant(id_))
 
+async def update_registrant(config_file, id_):
+    config = toml.load(config_file)
+    async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
+        async with RegFoxCache(api, config['regfox']) as cache:
+            await cache.sync()
+            pprint.pprint(await cache.update_registrant(id_))
+
 async def check_in(config_file, id_):
     config = toml.load(config_file)
     async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
@@ -429,6 +459,7 @@ if __name__ == '__main__':
     parser.add_argument('--show-forms', action='store_true', help='Show all forms (events) that are accessible with the provided configuration.')
     parser.add_argument('--search-registrants', dest='search_criteria', default=None, required=False, help='Search for registrants with the given criteria.')
     parser.add_argument('--get-registrant', dest='registrant_id', default=None, required=False, type=int, help='Get registrant by registrantId.')
+    parser.add_argument('--update-registrant', dest='update_registrant_id', default=None, required=False, type=int, help='Get registrant by registrantId, updating it from the server.')
     parser.add_argument('--check-in', dest='check_in_id', default=None, required=False, type=int, help='Check in user by registrantId.')
     parser.add_argument('--check-out', dest='check_out_id', default=None, required=False, type=int, help='Check out user by registrantId.')
     args = parser.parse_args()
@@ -440,6 +471,8 @@ if __name__ == '__main__':
         loop.run_until_complete(search_registrants(args.configuration, args.search_criteria))
     elif args.registrant_id is not None:
         loop.run_until_complete(get_registrant(args.configuration, args.registrant_id))
+    elif args.update_registrant_id is not None:
+        loop.run_until_complete(update_registrant(args.configuration, args.update_registrant_id))
     elif args.check_in_id is not None:
         loop.run_until_complete(check_in(args.configuration, args.check_in_id))
     elif args.check_out_id is not None:
