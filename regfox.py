@@ -27,6 +27,14 @@ class RegFoxClientSession(aiohttp.ClientSession):
         self._service_prefix = service_prefix
         self._api_key = api_key
 
+        self._limit_lock = asyncio.Lock()
+        self._burst_limit = 0
+        self._burst_remaining = 0
+        self._burst_reset = None
+        self._daily_limit = 0
+        self._daily_remaining = 0
+        self._daily_reset = None
+
         if api_key is not None:
             if 'headers' in kw and is_instance(kw, dict):
                 kw['headers'] = kw['headers'].copy()
@@ -35,8 +43,26 @@ class RegFoxClientSession(aiohttp.ClientSession):
         super().__init__(**kw)
 
     async def api_request(self, method, uri, **kw):
-        async with self.request(method, self._service_prefix + uri, **kw) as request:
-            return await request.json()
+        async with self.request(method, self._service_prefix + uri, **kw) as response:
+            data = await response.json()
+
+            async with self._limit_lock:
+                self._burst_limit = int(response.headers['X-Burst-Limit'])
+                self._burst_remaining = int(response.headers['X-Burst-Remaining'])
+                self._burst_reset = datetime.datetime.utcfromtimestamp(int(response.headers['X-Burst-Limit-Reset']))
+                self._daily_limit = int(response.headers['X-Daily-Limit'])
+                self._daily_remaining = int(response.headers['X-Daily-Remaining'])
+                self._daily_reset = datetime.datetime.utcfromtimestamp(int(response.headers['X-Daily-Limit-Reset']))
+
+            return data
+
+    async def burst_limits(self):
+        async with self._limit_lock:
+            return self._burst_remaining, self._burst_limit, self._burst_reset
+
+    async def daily_limits(self):
+        async with self._limit_lock:
+            return self._daily_remaining, self._daily_limit, self._daily_reset
 
     async def api_get(self, uri, **params):
         data_list = []
