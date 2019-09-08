@@ -361,7 +361,7 @@ class RegFoxCache:
     async def get_registrant(self, id_):
         async with self._db.execute('select * from badges where registrantId = ?', [id_]) as cursor:
             if cursor.rowcount == 0:
-                raise RuntimeError('Registrant {} not found.'.format(id_))
+                return False
             if cursor.rowcount > 1:
                 raise RuntimeError('Registrant {} found multiple times. (This should be impossible since that column is the primary key.)'.format(id_))
             return self.registrant_row_to_dict(await cursor.fetchone())
@@ -370,7 +370,7 @@ class RegFoxCache:
         async with self._db_lock:
             registrant = await self._client_session.search_registrants(id_)
             if not registrant:
-                return None
+                return False
 
             values = self._regfox_to_database(registrant)
             update_columns = ', '.join(['{}=?'.format(col) for col in list(values.keys())])
@@ -379,7 +379,7 @@ class RegFoxCache:
 
             async with self._db.execute('update badges set {} where registrantId=?'.format(update_columns), update_substitutions) as cursor:
                 if cursor.rowcount == 0:
-                    return None
+                    return False
                 if cursor.rowcount > 1:
                     raise RuntimeError('Somehow multiple rows were updated. This should be impossible. Rolling back transaction...')
 
@@ -403,7 +403,7 @@ class RegFoxCache:
 
         return data
 
-    async def check_in_by_id(self, id_, time=None):
+    async def checkin_registrant(self, id_, time=None):
         check_in_data = await self._client_session.check_in(json=self._make_checkin_data_dict(id_, time))
 
         if check_in_data['responseCode'] != 200:
@@ -419,10 +419,10 @@ class RegFoxCache:
                 ))
             await self._db.commit()
 
-        return True
+        return await self.get_registrant(id_)
 
 
-    async def check_out_by_id(self, id_, time=None):
+    async def checkout_registrant(self, id_, time=None):
         # This endpoint appears to not be functional at this time.
         #return await self._client_session.check_out(json=self._make_checkin_data_dict(id_, time))
         return False
@@ -462,14 +462,14 @@ async def check_in(config_file, id_):
     async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
         async with RegFoxCache(api, config['regfox']) as cache:
             await cache.sync()
-            pprint.pprint(await cache.check_in_by_id(id_))
+            pprint.pprint(await cache.checkin_registrant(id_))
 
 async def check_out(config_file, id_):
     config = toml.load(config_file)
     async with RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
         async with RegFoxCache(api, config['regfox']) as cache:
             await cache.sync()
-            pprint.pprint(await cache.check_out_by_id(id_))
+            pprint.pprint(await cache.checkout_registrant(id_))
 
 async def main(config_file):
     config = toml.load(config_file)

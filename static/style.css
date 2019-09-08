@@ -9,6 +9,16 @@ body {
   font-size: 12pt;
 }
 
+.checked-in-notation {
+	font-size: small;
+	color: red;
+}
+
+.not-checked-in-notation {
+	font-size: small;
+	color: green;
+}
+
 .page-container {
     padding: 1em;
 }

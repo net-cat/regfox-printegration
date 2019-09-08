@@ -1,5 +1,8 @@
 [regfox]
 
+# The name of the event as displayed on the badges.
+event_name = "Event Name Here"
+
 # RegFox API key. Get it from Extras->Integrations
 # Don't check it into the repo.
 api_key = "00000000000000000000000000000000"
@@ -23,9 +26,6 @@ start_date = "1955-09-12"
 database_file = ":memory:"
 
 [printer]
-
-# The name of the event as displayed on the badges.
-event_name = "Event Name Here"
 
 # Default CUPS printer to use.
 printer_name = "DYMO-LabelWriter-450"

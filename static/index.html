@@ -11,7 +11,14 @@
     <script id="badgeTableRow" type="text/x-jsrender">
             <div class="ac_title badge-table-row badge-table-hoverable" id="{{>registrantId}}">
                 <div class="badge-table-item badge-table-item-indicator ac_indicator"></div>
-                <div class="ac_target badge-table-item badge-table-item-main">{{>attendeeBadgeName}}</div>
+                <div class="ac_target badge-table-item badge-table-item-main">
+                    {{>attendeeBadgeName}}
+                    {{if checkedIn}}
+                    <span class="checked-in-notation">(checked in)</span>
+                    {{else}}
+                    <span class="not-checked-in-notation">(not checked in)</span>
+                    {{/if}}
+                </div>
                 <div class="ac_target badge-table-item badge-table-item-small">{{>firstName}}</div>
                 <div class="ac_target badge-table-item badge-table-item-small">{{>lastName}}</div>
                 <div class="ac_target badge-table-item badge-table-item-small">{{>badgeLevel}}</div>
@@ -20,6 +27,7 @@
             <div class="ac_data badge-table-row" id="{{>registrantId}}">
                 <div class="badge-table-item badge-table-indicator"></div>
                 <div class="badge-table-item badge-table-item-main">
+                    <li><strong>ID:</strong> {{>registrantId}} ({{>displayId}})</li>
                     <li><strong>Email:</strong> {{>email}}</li>
                     <li><strong>DOB:</strong> {{>dateOfBirth}}</li>
                     <li><strong>Age at Event:</strong> {{>ageAtEvent}} (<strong>Current:</strong> {{>ageNow}})</li>
@@ -30,7 +38,16 @@
                 <div class="badge-table-item"></div>
                 <div class="badge-table-item"></div>
                 <div class="badge-table-item"></div>
-                <div class="badge-table-item"></div>
+                <div class="badge-table-item">
+                    <form>
+                        {{if checkedIn}}
+                        <input type="button" value="Reprint" class="reprint" id="reprint_{{>registrantId}}">
+                        {{else}}
+                        <input type="button" value="Check In & Print" class="checkin" id="checkin_{{>registrantId}}">
+                        {{/if}}
+                        <input type="button" value="Update" class="reprint" id="update_{{>registrantId}}">
+                    </form>
+                </div>
             </div>
     </script>
 </head>
