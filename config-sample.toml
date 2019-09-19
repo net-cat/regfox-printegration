@@ -12,10 +12,6 @@ api_key = "00000000000000000000000000000000"
 # You can also use this script to query available forms: regfox.py -c config.toml --show-forms
 form_id = 1
 
-# Number of seconds between updates from RegFox.
-# Each update will use two API requests per 50 new registrants. (Minimum of two.)
-update_period = 60
-
 # Date the event starts. (This date will be used to calculate attendee ages.)
 start_date = "1955-09-12"
 
@@ -32,3 +28,9 @@ printer_name = "DYMO-LabelWriter-450"
 
 # Default font to print badges with. (This can be overridden in the template.)
 default_font = "LiberationSansNarrow-Regular.ttf"
+
+[frontend]
+
+# Number of seconds between updates from RegFox.
+# Each update will use two API requests per 50 new registrants. (Minimum of two.)
+update_period = 60

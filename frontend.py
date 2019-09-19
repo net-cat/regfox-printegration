@@ -16,6 +16,7 @@ class Frontend:
         self._api = regfox.RegFoxClientSession(api_key=self._config['regfox']['api_key'])
         self._cache = await regfox.RegFoxCache.construct(self._api, self._config['regfox'])
         self._printer = await asyncio.get_event_loop().run_in_executor(None, printegration.Printegration, self._config['printer'])
+        self._update_database_task = asyncio.ensure_future(self._update_database())
 
     @classmethod
     async def construct(cls, *arg, **kw):
@@ -24,6 +25,7 @@ class Frontend:
         return self
 
     async def close(self):
+        self._update_database_task.cancel()
         await self._cache.close()
 
     async def __aenter__(self):
@@ -32,6 +34,11 @@ class Frontend:
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.close()
+
+    async def _update_database(self):
+        while True:
+            await self._cache.sync()
+            await asyncio.sleep(self._config['frontend']['update_period'])
 
     @classmethod
     async def runner(cls, *arg, **kw):
