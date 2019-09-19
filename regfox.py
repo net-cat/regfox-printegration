@@ -70,7 +70,6 @@ class RegFoxClientSession(aiohttp.ClientSession):
                         'reset': self._daily_reset,
                     }
             }
-            return self._burst_remaining, self._burst_limit, self._burst_reset
 
     async def api_get(self, uri, **params):
         data_list = []

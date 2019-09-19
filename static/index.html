@@ -7,6 +7,7 @@
     <script src="/static/jsrender.min.js"></script>
     <script src="/static/accordion.js"></script>
     <script src="/static/interface.js"></script>
+    <script src="/static/printerlogic.js"></script>
     <link href="/static/style.css" rel="stylesheet">
     <script id="badgeTableRow" type="text/x-jsrender">
             <div class="ac_title badge-table-row badge-table-hoverable" id="{{>registrantId}}">
@@ -50,6 +51,19 @@
                 </div>
             </div>
     </script>
+    <script id="printerTableRow" type="text/x-jsrender">
+            <div class="printer-table-row">
+                <div class="printer-table-item printer-table-item-slot">{{>slotName}}</div>
+                <div class="printer-table-item printer-table-item-selector">
+                    <select id="{{>slotSelectorName}}">
+                        <option value="null">&lt;none selected&gt;</option>
+                        {{for printers}}
+                        <option value="{{>printerName}}">{{>printerName}} ({{>printerInfo}}, {{>printerModel}})</option>
+                        {{/for}}
+                    </select>
+                </div>
+            </div>
+    </script>
 </head>
 
 <body>
@@ -73,6 +87,17 @@
             </div>
         </div>
         <div class="badge-table-container-results" id="badgeTable">
+        </div>
+
+        <hr>
+
+        <div class="printer-table-container">
+            <div class="badge-table-title">
+                <div class="printer-table-item printer-table-item-slot"><strong>Slot</strong></div>
+                <div class="printer-table-item printer-table-item-selector"><strong>Printer</strong></div>
+            </div>
+        </div>
+        <div class="printer-table-container-results" id="printerTable">
         </div>
     </div>
 </body>

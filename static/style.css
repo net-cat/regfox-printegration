@@ -86,3 +86,36 @@ h1 {
 .ac_condensed::before { content: "\25B6"; }
 .ac_expanded::before { content: "\25BC"; }
 .ac_hidden { display: none; }
+
+.printer-table-container, .printer-table-container-results {
+    min-width: 50%;
+    width: 50%;
+    display: table;
+}
+
+.printer-table-item {
+    display: table-cell;
+    padding: 0.5em 0.5em;
+    width: 50%;
+}
+
+.printer-table-title, .printer-table-row {
+    width: 100%;
+    display: table-row;
+}
+
+.printer-table-title {
+    background: rgba(180,180,220,1);
+}
+
+.printer-table-row:nth-child(2n+1) {
+    background: rgba(215,215,235,1);
+}
+
+.printer-table-row:nth-child(2n) {
+    background: rgba(235,235,235,1);
+}
+
+.printer-table-item-slot { width: 25%; }
+.printer-table-item-selector { width: auto; }
+

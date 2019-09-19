@@ -74,7 +74,7 @@ class Frontend:
         return aiohttp.web.json_response(registrants, dumps=regfox.JSONEncoder.dumps)
 
     async def printer_list(self, request):
-        printers = await self._printer.printer_list()
+        printers = await asyncio.get_event_loop().run_in_executor(None, self._printer.printer_list)
         return aiohttp.web.json_response(printers)
 
     async def print_badge(self, request):

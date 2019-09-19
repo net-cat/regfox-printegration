@@ -81,9 +81,24 @@ function clear_search(ev=null)
 	$.getJSON("/query", update_table);
 }
 
+function populate_printer_table(data)
+{
+	for(var slot of printer_slots())
+	{
+		tpl = $.templates("#printerTableRow");
+		var row = tpl.render({
+			"slotName": slot,
+			"slotSelectorName": "selector".concat(slot),
+			"printers": data,
+		});
+		$("#printerTable").append(row);
+	}
+}
+
 $(document).ready(function (){
 	$("#searchBox").keypress(update_search);
 	clear_search();
 	$("#updateSearch").click(update_search);
 	$("#clearSearch").click(clear_search);
+	$.getJSON("/printer_list", populate_printer_table);
 });

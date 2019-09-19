@@ -14,10 +14,16 @@ class Printegration:
         self._config = config
         self._cups_connection = cups.Connection()
 
-    def _printer_list(self):
-        x = self._cups_connection.getPrinters()
-        __import__('pprint').pprint(x)
-        return list(x.keys())
+    def printer_list(self):
+        cups_printer_list = self._cups_connection.getPrinters()
+        printer_list = []
+        for printer_name, printer_dict in cups_printer_list.items():
+            printer_list.append({
+                'printerName': printer_name,
+                'printerInfo': printer_dict['printer-info'],
+                'printerModel': printer_dict['printer-make-and-model'],
+            })
+        return printer_list
 
     def _print_png(self, printer, data, job_name='badge', media=None):
         cups_options = {}
