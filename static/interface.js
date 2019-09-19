@@ -64,8 +64,11 @@ function update_search(ev)
 {
 	if (ev.type == "keypress" && event.which != 13)
 	{
+		$("#updateSearch").attr("value", "Search");
 		return;
 	}
+	ev.preventDefault();
+	$("#updateSearch").attr("value", "Reload");
 	var new_search = $("#searchBox").val();
 	var criteria = encodeURIComponent(new_search);
 	var query = `/query?criteria=${criteria}`;

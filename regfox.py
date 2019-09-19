@@ -56,13 +56,21 @@ class RegFoxClientSession(aiohttp.ClientSession):
 
             return data
 
-    async def burst_limits(self):
+    async def get_api_limits(self):
         async with self._limit_lock:
+            return {
+                    'burst': {
+                        'limit': self._burst_limit,
+                        'remaining': self._burst_remaining,
+                        'reset': self._burst_reset,
+                    },
+                    'daily': {
+                        'limit': self._daily_limit,
+                        'remaining': self._daily_remaining,
+                        'reset': self._daily_reset,
+                    }
+            }
             return self._burst_remaining, self._burst_limit, self._burst_reset
-
-    async def daily_limits(self):
-        async with self._limit_lock:
-            return self._daily_remaining, self._daily_limit, self._daily_reset
 
     async def api_get(self, uri, **params):
         data_list = []
@@ -420,7 +428,6 @@ class RegFoxCache:
             await self._db.commit()
 
         return await self.get_registrant(id_)
-
 
     async def checkout_registrant(self, id_, time=None):
         # This endpoint appears to not be functional at this time.

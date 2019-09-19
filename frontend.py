@@ -46,6 +46,7 @@ class Frontend:
             aiohttp.web.get('/update_badge', frontend.update_badge),
             aiohttp.web.get('/checkin_badge', frontend.checkin_badge),
             aiohttp.web.get('/checkout_badge', frontend.checkout_badge),
+            aiohttp.web.get('/get_api_limits', frontend.get_api_limits),
         ])
         return app
 
@@ -93,6 +94,9 @@ class Frontend:
 
     async def main_page(self, request):
         raise aiohttp.web.HTTPFound('/static/index.html')
+
+    async def get_api_limits(self, request):
+        return aiohttp.web.json_response(await self._api.get_api_limits(), dumps=regfox.JSONEncoder.dumps)
 
 if __name__ == "__main__":
     import argparse
