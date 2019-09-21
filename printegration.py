@@ -7,6 +7,7 @@ import toml
 import regfox
 import badges
 from GenericBadge import GenericBadgeTemplate
+from TestBadge import TestBadgeTemplate
 
 class Printegration:
     PrinterDef = namedtuple("PrinterDef", ('name', 'info', 'model'))
@@ -35,14 +36,35 @@ class Printegration:
         self._cups_connection.writeRequestData(data, len(data))
         self._cups_connection.finishDocument(printer)
 
-    def print_badge(self, template_data):
+    def _verify_printer_name(self, printer_name):
+        if printer_name is None:
+            printer_name = self._config['printer_name']
+        if printer_name not in self._cups_connection.getPrinters():
+            raise FileNotFoundError("Printer {!r} was not found.".format(printer_name))
+        return printer_name
+
+    def print_badge(self, template_data, printer_name=None):
+        printer_name = self._verify_printer_name(printer_name)
         badge_template = GenericBadgeTemplate(default_font=self._config['default_font'])
         png_data = io.BytesIO()
         badge_template.render(template_data, png_data, 'png')
         self._print_png(
-            self._config['printer_name'],
+            printer_name,
             png_data.getvalue(),
             'badge-{}'.format(template_data['registrantId']),
+            badge_template.cups_media
+        )
+
+    def print_test(self, printer_name, printer_slot):
+        printer_name = self._verify_printer_name(printer_name)
+        print("Printer: {!r}".format(printer_name))
+        badge_template = TestBadgeTemplate(default_font=self._config['default_font'])
+        png_data = io.BytesIO()
+        badge_template.render({'printerSlot': printer_slot, 'printerName': printer_name}, png_data, 'png')
+        self._print_png(
+            printer_name,
+            png_data.getvalue(),
+            'testBadge-{}'.format(printer_slot),
             badge_template.cups_media
         )
 

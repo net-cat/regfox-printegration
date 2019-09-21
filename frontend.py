@@ -50,6 +50,7 @@ class Frontend:
             aiohttp.web.get('/query', frontend.query),
             aiohttp.web.get('/printer_list', frontend.printer_list),
             aiohttp.web.get('/print_badge', frontend.print_badge),
+            aiohttp.web.get('/print_test', frontend.print_test),
             aiohttp.web.get('/update_badge', frontend.update_badge),
             aiohttp.web.get('/checkin_badge', frontend.checkin_badge),
             aiohttp.web.get('/checkout_badge', frontend.checkout_badge),
@@ -78,10 +79,23 @@ class Frontend:
         return aiohttp.web.json_response(printers)
 
     async def print_badge(self, request):
+        name = request.query.get('name')
+        if name == "null":
+            name = None
+
         id_ = int(request.query.get('id', 0))
         registrant = await self._cache.get_registrant(id_)
         registrant['eventName'] = self._event_name
-        await asyncio.get_event_loop().run_in_executor(None, self._printer.print_badge, registrant)
+        await asyncio.get_event_loop().run_in_executor(None, self._printer.print_badge, registrant, name)
+        return aiohttp.web.json_response(None)
+
+    async def print_test(self, request):
+        name = request.query.get('name')
+        slot = request.query.get('slot', '<no slot>')
+        if name == "null":
+            name = None
+
+        await asyncio.get_event_loop().run_in_executor(None, self._printer.print_test, name, slot)
         return aiohttp.web.json_response(None)
 
     async def update_badge(self, request):

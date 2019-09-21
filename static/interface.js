@@ -16,8 +16,10 @@ function render_registrant(entry)
 	});
 	row.find(`#reprint_${entry.registrantId}`).each(function(index){
 		let badge_id = entry.registrantId;
+		let slot_name = printer_logic(entry);
 		$(this).click(function(ev){
-			$.getJSON(`/print_badge?id=${entry.registrantId}`);
+			var printer_name = slot_to_name(slot_name);
+			$.getJSON(`/print_badge?id=${entry.registrantId}&name=${printer_name}`);
 		});
 	});
 	return row;
@@ -47,7 +49,8 @@ function update_entry_and_print(entry)
 	{
 		return;
 	}
-	$.getJSON(`/print_badge?id=${entry.registrantId}`);
+	let printer_name = slot_to_name(printer_logic(entry));
+	$.getJSON(`/print_badge?id=${entry.registrantId}&name=${printer_name}`);
 }
 
 function update_table(data)
@@ -81,18 +84,44 @@ function clear_search(ev=null)
 	$.getJSON("/query", update_table);
 }
 
+function make_slot_selector_name(slot)
+{
+	return "selector".concat(slot);
+}
+
+function print_test(printer_name, printer_slot)
+{
+	var query = `/print_test?name=${printer_name}&slot=${printer_slot}`;
+	$.getJSON(query);
+}
+
 function populate_printer_table(data)
 {
 	for(var slot of printer_slots())
 	{
-		tpl = $.templates("#printerTableRow");
-		var row = tpl.render({
+		var selector_name = make_slot_selector_name(slot)
+		var tpl = $.templates("#printerTableRow");
+		var row = $(tpl.render({
 			"slotName": slot,
-			"slotSelectorName": "selector".concat(slot),
+			"slotSelectorName": selector_name,
 			"printers": data,
-		});
+		}));
+		row.find("#testprint_".concat(slot)).click(slot, function(ev) {
+			print_test(slot_to_name(ev.data), ev.data);
+		})
 		$("#printerTable").append(row);
 	}
+}
+
+function slot_to_name(slot)
+{
+	var selector = "#".concat(make_slot_selector_name(slot), " option:selected");
+	var option_elem = $(selector);
+	if (option_elem.length == 0)
+	{
+		return "null"; // Yes, string "null", not JS null.
+	}
+	return option_elem.attr("value");
 }
 
 $(document).ready(function (){

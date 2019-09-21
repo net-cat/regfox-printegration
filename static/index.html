@@ -46,7 +46,7 @@
                         {{else}}
                         <input type="button" value="Check In & Print" class="checkin" id="checkin_{{>registrantId}}">
                         {{/if}}
-                        <input type="button" value="Update" class="reprint" id="update_{{>registrantId}}">
+                        <input type="button" value="Update" class="update" id="update_{{>registrantId}}">
                     </form>
                 </div>
             </div>
@@ -61,6 +61,7 @@
                         <option value="{{>printerName}}">{{>printerName}} ({{>printerInfo}}, {{>printerModel}})</option>
                         {{/for}}
                     </select>
+					<input type="button" value="Test" class="testprint" id="testprint_{{>slotName}}">
                 </div>
             </div>
     </script>
@@ -76,6 +77,17 @@
 
         <hr>
 
+        <div class="printer-table-container">
+            <div class="badge-table-title">
+                <div class="printer-table-item printer-table-item-slot"><strong>Slot</strong></div>
+                <div class="printer-table-item printer-table-item-selector"><strong>Printer</strong></div>
+            </div>
+        </div>
+        <div class="printer-table-container-results" id="printerTable">
+        </div>
+
+        <hr>
+
         <div class="badge-table-container">
             <div class="badge-table-title">
                 <div class="badge-table-item badge-table-item-indicator"></div>
@@ -87,17 +99,6 @@
             </div>
         </div>
         <div class="badge-table-container-results" id="badgeTable">
-        </div>
-
-        <hr>
-
-        <div class="printer-table-container">
-            <div class="badge-table-title">
-                <div class="printer-table-item printer-table-item-slot"><strong>Slot</strong></div>
-                <div class="printer-table-item printer-table-item-selector"><strong>Printer</strong></div>
-            </div>
-        </div>
-        <div class="printer-table-container-results" id="printerTable">
         </div>
     </div>
 </body>
