@@ -97,6 +97,7 @@ function print_test(printer_name, printer_slot)
 
 function populate_printer_table(data)
 {
+	var printer_settings = JSON.parse(window.localStorage.getItem("printegration_settings"));
 	for(var slot of printer_slots())
 	{
 		var selector_name = make_slot_selector_name(slot)
@@ -105,6 +106,7 @@ function populate_printer_table(data)
 			"slotName": slot,
 			"slotSelectorName": selector_name,
 			"printers": data,
+			"default": (printer_settings !== null && slot in printer_settings) ? printer_settings[slot] : "null",
 		}));
 		row.find("#testprint_".concat(slot)).click(slot, function(ev) {
 			print_test(slot_to_name(ev.data), ev.data);
@@ -124,10 +126,27 @@ function slot_to_name(slot)
 	return option_elem.attr("value");
 }
 
+function save_printer_settings(ev)
+{
+	var printer_settings = {};
+	for(var slot of printer_slots())
+	{
+		printer_settings[slot] = slot_to_name(slot);
+	}
+	window.localStorage.setItem("printegration_settings", JSON.stringify(printer_settings));
+}
+
+function delete_printer_settings(ev)
+{
+	window.localStorage.removeItem("printegration_settings");
+}
+
 $(document).ready(function (){
 	$("#searchBox").keypress(update_search);
 	clear_search();
 	$("#updateSearch").click(update_search);
 	$("#clearSearch").click(clear_search);
+	$("#savePrinterSettings").click(save_printer_settings);
+	$("#deletePrinterSettings").click(delete_printer_settings);
 	$.getJSON("/printer_list", populate_printer_table);
 });

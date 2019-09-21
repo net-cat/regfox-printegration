@@ -87,7 +87,9 @@ h1 {
 .ac_expanded::before { content: "\25BC"; }
 .ac_hidden { display: none; }
 
-.printer-table-container, .printer-table-container-results {
+.hidden { display: none; }
+
+.printer-table-container, .printer-table-container-results, .printer-table-controls {
     min-width: 50%;
     width: 50%;
     display: table;

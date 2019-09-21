@@ -58,7 +58,7 @@
                     <select id="{{>slotSelectorName}}">
                         <option value="null">&lt;none selected&gt;</option>
                         {{for printers}}
-                        <option value="{{>printerName}}">{{>printerName}} ({{>printerInfo}}, {{>printerModel}})</option>
+                        <option value="{{>printerName}}" {{if ~root.default == printerName}}selected{{/if}}>{{>printerName}} ({{>printerInfo}}, {{>printerModel}})</option>
                         {{/for}}
                     </select>
 					<input type="button" value="Test" class="testprint" id="testprint_{{>slotName}}">
@@ -77,17 +77,6 @@
 
         <hr>
 
-        <div class="printer-table-container">
-            <div class="badge-table-title">
-                <div class="printer-table-item printer-table-item-slot"><strong>Slot</strong></div>
-                <div class="printer-table-item printer-table-item-selector"><strong>Printer</strong></div>
-            </div>
-        </div>
-        <div class="printer-table-container-results" id="printerTable">
-        </div>
-
-        <hr>
-
         <div class="badge-table-container">
             <div class="badge-table-title">
                 <div class="badge-table-item badge-table-item-indicator"></div>
@@ -100,6 +89,22 @@
         </div>
         <div class="badge-table-container-results" id="badgeTable">
         </div>
+        <hr>
+
+        <div class="printer-table-container">
+            <div class="badge-table-title">
+                <div class="printer-table-item printer-table-item-slot"><strong>Slot</strong></div>
+                <div class="printer-table-item printer-table-item-selector"><strong>Printer</strong></div>
+            </div>
+        </div>
+        <div class="printer-table-container-results" id="printerTable">
+        </div>
+        <div class="printer-table-controls">
+            <input type="button" value="Save Printer Settings" id="savePrinterSettings">
+            <input type="button" value="Delete Printer Settings" id="deletePrinterSettings">
+        </div>
+
+
     </div>
 </body>
 
