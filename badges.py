@@ -3,6 +3,7 @@ from collections import namedtuple
 from builtins import property
 import importlib.util
 import os
+import sys
 
 DEFAULT_DPI = 300.0
 
@@ -262,7 +263,7 @@ if __name__ == "__main__":
 
     elif args.printer:
         for data in sample_data:
-            print('Printing:', data['badgeName']);
+            print('Printing:', data['attendeeBadgeName']);
             lp_proc = subprocess.Popen(['lp', '-d', args.printer, '-o', badge.cups_media, '-'], stdin=subprocess.PIPE)
             badge.render(data, lp_proc.stdin, 'PNG')
             lp_proc.stdin.close()

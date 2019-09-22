@@ -1,7 +1,6 @@
 aiohttp
 aiodns
 aiosqlite
-cchardet
 iso8601
 pillow
 pycups

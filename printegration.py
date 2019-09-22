@@ -1,8 +1,8 @@
 import cups
 from collections import namedtuple
-from mako.template import Template
 import io
 import os
+import sys
 import toml
 import regfox
 import badges
