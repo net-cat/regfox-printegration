@@ -29,6 +29,10 @@ printer_name = "DYMO-LabelWriter-450"
 # Default font to print badges with. (This can be overridden in the template.)
 default_font = "LiberationSansNarrow-Regular.ttf"
 
+# Pathname to the template to use to render the badge.
+# Given filename ABC.py, the class name should be ABCTemplate
+badge_template = "GenericBadge.py"
+
 [frontend]
 
 # Number of seconds between updates from RegFox.

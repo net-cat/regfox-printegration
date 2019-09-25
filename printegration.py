@@ -1,13 +1,22 @@
 import cups
 from collections import namedtuple
+import importlib.util
 import io
+import json
 import os
 import sys
 import toml
 import regfox
 import badges
-from GenericBadge import GenericBadgeTemplate
 from TestBadge import TestBadgeTemplate
+
+def import_module_file(file_path):
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    sys.modules[module_name] = module
+    return module
 
 class Printegration:
     PrinterDef = namedtuple("PrinterDef", ('name', 'info', 'model'))
@@ -45,7 +54,10 @@ class Printegration:
 
     def print_badge(self, template_data, printer_name=None):
         printer_name = self._verify_printer_name(printer_name)
-        badge_template = GenericBadgeTemplate(default_font=self._config['default_font'])
+        template_module = import_module_file(self._config['badge_template'])
+        template_class_name = os.path.splitext(os.path.basename(self._config['badge_template']))[0] + "Template"
+        template_class = getattr(template_module, template_class_name)
+        badge_template = template_class(default_font=self._config['default_font'])
         png_data = io.BytesIO()
         badge_template.render(template_data, png_data, 'png')
         self._print_png(
@@ -77,12 +89,13 @@ if __name__ == "__main__":
     parser.add_argument('--list-printers', '-l', action='store_true', help='Show all available printers.')
     args = parser.parse_args()
 
-    config = toml.load(config_file)
+    config = toml.load(args.configuration)
     printer = Printegration(config['printer'])
 
     if args.list_printers:
         printer.printer_list()
 
     elif args.template_data_file is not None:
-        template_data = toml.load(args.template_data_file)
+        with open(args.template_data_file, 'rb') as td_file:
+            template_data = json.load(td_file)
         printer.print_badge(template_data)
