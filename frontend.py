@@ -5,11 +5,23 @@ import json
 import os
 import printegration
 import regfox
+import ssl
 import toml
 
 class Frontend:
     def __init__(self, config_file):
         self._config = toml.load(config_file)
+        if 'ssl' in self._config['frontend']:
+            self._ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            self._ssl.load_cert_chain(
+                self._config['frontend']['ssl']['ssl_cert'],
+                self._config['frontend']['ssl'].get('ssl_key', None),
+                self._config['frontend']['ssl'].get('ssl_key_passphrase', None),
+            )
+            self._ssl.options |= ssl.OP_NO_TLSv1
+            self._ssl.options |= ssl.OP_NO_TLSv1_1
+        else:
+            self._ssl = None
 
     async def _startup(self):
         self._event_name = self._config['regfox']['event_name']
@@ -40,23 +52,19 @@ class Frontend:
             await self._cache.sync()
             await asyncio.sleep(self._config['frontend']['update_period'])
 
-    @classmethod
-    async def runner(cls, *arg, **kw):
-        app = aiohttp.web.Application()
-        frontend = await Frontend.construct(*arg, **kw)
+    def add_routes_to_app(self, app):
         app.add_routes([
             aiohttp.web.StaticDef('/static', 'static', {}),
-            aiohttp.web.get('/', frontend.main_page),
-            aiohttp.web.get('/query', frontend.query),
-            aiohttp.web.get('/printer_list', frontend.printer_list),
-            aiohttp.web.get('/print_badge', frontend.print_badge),
-            aiohttp.web.get('/print_test', frontend.print_test),
-            aiohttp.web.get('/update_badge', frontend.update_badge),
-            aiohttp.web.get('/checkin_badge', frontend.checkin_badge),
-            aiohttp.web.get('/checkout_badge', frontend.checkout_badge),
-            aiohttp.web.get('/get_api_limits', frontend.get_api_limits),
+            aiohttp.web.get('/', self.main_page),
+            aiohttp.web.get('/query', self.query),
+            aiohttp.web.get('/printer_list', self.printer_list),
+            aiohttp.web.get('/print_badge', self.print_badge),
+            aiohttp.web.get('/print_test', self.print_test),
+            aiohttp.web.get('/update_badge', self.update_badge),
+            aiohttp.web.get('/checkin_badge', self.checkin_badge),
+            aiohttp.web.get('/checkout_badge', self.checkout_badge),
+            aiohttp.web.get('/get_api_limits', self.get_api_limits),
         ])
-        return app
 
     async def query(self, request):
         try:
@@ -119,6 +127,22 @@ class Frontend:
     async def get_api_limits(self, request):
         return aiohttp.web.json_response(await self._api.get_api_limits(), dumps=regfox.JSONEncoder.dumps)
 
+    async def _app_startup(self, app):
+        await self._startup()
+
+    async def _app_shutdown(self, app):
+        await self.close()
+
+    @classmethod
+    def run_app(cls, *arg, **kw):
+        app = aiohttp.web.Application()
+        frontend = Frontend(*arg, **kw)
+        frontend.add_routes_to_app(app)
+        app.on_startup.append(frontend._app_startup)
+        app.on_shutdown.append(frontend._app_shutdown)
+        aiohttp.web.run_app(app, ssl_context=frontend._ssl)
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -126,4 +150,4 @@ if __name__ == "__main__":
     parser.add_argument('--configuration', '-c', type=os.path.realpath, required=True, help='Configuration File')
     args = parser.parse_args()
 
-    aiohttp.web.run_app(Frontend.runner(args.configuration))
+    Frontend.run_app(args.configuration)

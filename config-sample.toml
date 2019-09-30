@@ -38,3 +38,15 @@ badge_template = "GenericBadge.py"
 # Number of seconds between updates from RegFox.
 # Each update will use two API requests per 50 new registrants. (Minimum of two.)
 update_period = 60
+
+# Uncomment this section for SSL support.
+#[frontend.ssl]
+
+# Set the filename that contains your SSL cert here. (If you have a combined cert, set this.)
+#ssl_cert = "cert.pem"
+
+# Set the filename that contains your SSL key here. (If you have a combined cert, omit this.)
+#ssl_key = "key.pem"
+
+# Set the passphrase for your SSL key here. (If it's unencrypted, omit this.)
+#ssl_key_passphrase = "correct horse battery staple"

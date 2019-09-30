@@ -11,9 +11,9 @@ async def main(config_file, confirm_count, printer):
     async with regfox.RegFoxClientSession(api_key=config['regfox']['api_key']) as api:
         async with regfox.RegFoxCache(api, config['regfox']) as cache:
             printer = printegration.Printegration(printer or config['printer'])
-    
+
             registrants = await cache.search_registrants()
-            
+
             if confirm_count == len(registrants):
                 for registrant in registrants:
                     template_data = {'eventName': event_name}
@@ -22,7 +22,7 @@ async def main(config_file, confirm_count, printer):
             else:
                 print('There are {0} badges. If you want to print them, add the option "--confirm-count {0}"'.format(len(registrants)))
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--configuration', '-c', type=os.path.realpath, required=True, help='Configuration File')
     parser.add_argument('--confirm-count', type=int, default=None, required=False, help='Used to make sure you want to spit out a lot of labels.')
