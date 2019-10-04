@@ -428,6 +428,14 @@ class RegFoxCache:
 
         return await self.get_registrant(id_)
 
+    async def _get_badge_type_counts(self, where='', type_column='badgeLevel'):
+        async with self._db.execute('select {0} as badgeLevel, COUNT({0}) as badgeLevelCount from badges {1} group by {0}'.format(type_column, where)) as cursor:
+            badge_levels = {}
+            rows = await cursor.fetchall()
+            for row in rows:
+                badge_levels[row['badgeLevel']] = row['badgeLevelCount']
+            return badge_levels
+
     async def get_counts(self):
         async with self._db_lock:
             output = {}
@@ -435,6 +443,9 @@ class RegFoxCache:
                 output['total'] = (await cursor.fetchone())[0]
             async with self._db.execute('select count(1) from badges where status="completed" and checkedIn=1') as cursor:
                 output['checked_in'] = (await cursor.fetchone())[0]
+            output['total_badge_counts'] = await self._get_badge_type_counts('where status="completed"')
+            output['checked_in_badge_counts'] = await self._get_badge_type_counts('where status="completed" and checkedIn=1')
+            output['checked_out_badge_counts'] = await self._get_badge_type_counts('where status="completed" and checkedIn=0')
             return output
 
     async def checkout_registrant(self, id_, time=None):
