@@ -140,7 +140,7 @@ class Frontend:
         frontend.add_routes_to_app(app)
         app.on_startup.append(frontend._app_startup)
         app.on_shutdown.append(frontend._app_shutdown)
-        aiohttp.web.run_app(app, ssl_context=frontend._ssl)
+        aiohttp.web.run_app(app, ssl_context=frontend._ssl, port=frontend._config['frontend']['port'])
 
 
 if __name__ == "__main__":

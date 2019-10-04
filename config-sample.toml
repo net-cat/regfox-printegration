@@ -40,6 +40,9 @@ badge_template = "GenericBadge.py"
 update_period = 60
 
 # Uncomment this section for SSL support.
+# TCP Port to listen on
+port = 8080
+
 #[frontend.ssl]
 
 # Set the filename that contains your SSL cert here. (If you have a combined cert, set this.)
