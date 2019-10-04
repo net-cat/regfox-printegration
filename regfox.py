@@ -311,9 +311,9 @@ class RegFoxCache:
                 async with self._db.execute('select max(registrantId), max(orderId) from badges') as cursor:
                     (max_registrant_id, max_order_id) = await cursor.fetchone()
                     if max_registrant_id is not None:
-                        registrant_params['startingAfter'] = max_registrant_id
+                        registrant_params['greaterThanId'] = str(max_registrant_id)
                     if max_order_id is not None:
-                        order_params['startingAfter'] = max_order_id
+                        order_params['greaterThanId'] = str(max_order_id)
 
             registrants, orders = await asyncio.gather(
                 self._client_session.search_registrants(formId=self._form_id, **registrant_params),
