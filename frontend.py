@@ -64,6 +64,7 @@ class Frontend:
             aiohttp.web.get('/checkin_badge', self.checkin_badge),
             aiohttp.web.get('/checkout_badge', self.checkout_badge),
             aiohttp.web.get('/get_api_limits', self.get_api_limits),
+            aiohttp.web.get('/get_counts', self.get_counts),
         ])
 
     async def query(self, request):
@@ -126,6 +127,9 @@ class Frontend:
 
     async def get_api_limits(self, request):
         return aiohttp.web.json_response(await self._api.get_api_limits(), dumps=regfox.JSONEncoder.dumps)
+
+    async def get_counts(self, request):
+        return aiohttp.web.json_response(await self._cache.get_counts(), dumps=regfox.JSONEncoder.dumps)
 
     async def _app_startup(self, app):
         await self._startup()

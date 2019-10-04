@@ -428,6 +428,15 @@ class RegFoxCache:
 
         return await self.get_registrant(id_)
 
+    async def get_counts(self):
+        async with self._db_lock:
+            output = {}
+            async with self._db.execute('select count(1) from badges where status="completed"') as cursor:
+                output['total'] = (await cursor.fetchone())[0]
+            async with self._db.execute('select count(1) from badges where status="completed" and checkedIn=1') as cursor:
+                output['checked_in'] = (await cursor.fetchone())[0]
+            return output
+
     async def checkout_registrant(self, id_, time=None):
         # This endpoint appears to not be functional at this time.
         #return await self._client_session.check_out(json=self._make_checkin_data_dict(id_, time))
